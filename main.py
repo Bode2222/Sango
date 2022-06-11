@@ -27,11 +27,10 @@ def draw2D(grid, tile_colors, screen):
 			rect = pygame.draw.rect(screen, color, [x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID], 0)
 
 
-# TODO: Send to github
 # TODO: Make function to turn tuple2d into list of rules
 if __name__ == '__main__':
 	# Set random seed for consistent results
-	#random.seed(a=1234675)
+	random.seed(a=1234675)
 	# init game engine
 	pygame.init()
 
@@ -46,7 +45,7 @@ if __name__ == '__main__':
 		Rule(2, 1, Dir.UP), Rule(2, 1, Dir.DOWN), Rule(2, 1, Dir.LEFT), Rule(2, 1, Dir.RIGHT)
 	]
 	# Create Wave-funciton collapse object
-	wf = WFCollapse2D([25, 25], 3, rules, weights=[5, 7.5, 5], inventory={2: 25})
+	wf = WFCollapse2D([25, 25], 3, rules, weights=[5, 7.5, 5])
 
 	# open a new window
 	screen = pygame.display.set_mode((500, 500))

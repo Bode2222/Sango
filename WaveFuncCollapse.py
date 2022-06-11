@@ -2,6 +2,7 @@
 import math
 import random
 import numpy as np
+import time
 from Tuple import Tuple2D
 
 
@@ -263,11 +264,13 @@ if __name__ == '__main__':
         Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
     ]
     # Create Wave-funciton collapse object
-    test = WFCollapse2D([3, 5], 3, rules, inventory={0: -1, 1: -1})
+    test = WFCollapse2D([10, 10], 3, rules, inventory={0: -1, 1: -1})
 
     # Keep stepping till generation is done
+    start_time = time.time()
     while test.step():
         pass
     print(str(test._grid))
+    print("Execution time: %s seconds" % (time.time() - start_time))
 
     print("WaveFunc Program terminated")
