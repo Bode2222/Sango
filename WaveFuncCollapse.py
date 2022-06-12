@@ -96,6 +96,7 @@ class WFCollapse2D(WaveFunctionCollapse):
 
     # When a tile has run out of stock in the inventory remove it from all cells
     # Generate weights and Calculate the entropy for each cell using shannon entropy shown below, and selects the cell with the lowest entropy
+    # Choose lowest entropy from entropy buffer. if its empty calculate it
     # shannon_entropy_for_square = log(sum(weight)) - (sum(weight * log(weight)) / sum(weight))
     def _get_lowest_entropy(self):
         i = 0
@@ -249,6 +250,23 @@ class WFCollapse2D(WaveFunctionCollapse):
     def _set_weights(self, context):
         self._weights = self._gen_weights(context)
 
+# Given a grid, iterate over it and add every rule found in it
+def extractRules2D(grid: Tuple2D):
+    # Set to place results
+    result = set()
+    for x in range(grid.len):
+        for y in range(grid.wid):
+            # For every adjacent tile
+            #if (x + 1)
+            pass
+
+            pass
+    pass
+
+# TODO: Make function to turn tuple2d into list of rules
+# TODO: Make it so only cells whose contexts were changed need to have an entropy recalculation. we need an entropy buffer
+# TODO: Update entropy buffer in the propagate function. every item on the stack gets a weight recalc after its changes are propagated as long as it hasnt chosen a tile. 
+# when we collapse a cell set its entropy to inifinte
 if __name__ == '__main__':
     # Set random seed for consistent results
     random.seed(a=1235)
@@ -264,7 +282,7 @@ if __name__ == '__main__':
         Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
     ]
     # Create Wave-funciton collapse object
-    test = WFCollapse2D([10, 10], 3, rules, inventory={0: -1, 1: -1})
+    test = WFCollapse2D([35, 35], 3, rules, inventory={0: -1, 1: -1})
 
     # Keep stepping till generation is done
     start_time = time.time()

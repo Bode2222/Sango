@@ -16,8 +16,8 @@ SAND = (194, 178, 128)
 # Takes in the grid and a list of colors the same length as the number of unique tiles in the grid. prepend the color for an unsolved tile into the tiled_colors list
 def draw2D(grid, tile_colors, screen):
 	# Define constants
-	CELL_WID = int(.9 * screen.get_height() / grid.wid)
-	CUSHION = int(.1 * screen.get_width() / grid.wid)
+	CELL_WID = int(.95 * screen.get_height() / grid.wid)
+	CUSHION = int(.05 * screen.get_width() / grid.wid)
 
 	# Draw rects that represent the grid
 	for y in range(grid.wid):
@@ -26,11 +26,9 @@ def draw2D(grid, tile_colors, screen):
 			color = tile_colors[grid.get_pos([x, y]).chosen_tile + 1]
 			rect = pygame.draw.rect(screen, color, [x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID], 0)
 
-
-# TODO: Make function to turn tuple2d into list of rules
 if __name__ == '__main__':
 	# Set random seed for consistent results
-	random.seed(a=1234675)
+	#random.seed(a=1235)
 	# init game engine
 	pygame.init()
 
@@ -42,10 +40,11 @@ if __name__ == '__main__':
 		Rule(1, 2, Dir.UP), Rule(1, 2, Dir.DOWN), Rule(1, 2, Dir.LEFT), Rule(1, 2, Dir.RIGHT),
 		Rule(1, 1, Dir.UP), Rule(1, 1, Dir.DOWN), Rule(1, 1, Dir.LEFT), Rule(1, 1, Dir.RIGHT),
 		Rule(2, 0, Dir.UP), Rule(2, 0, Dir.DOWN), Rule(2, 0, Dir.LEFT), Rule(2, 0, Dir.RIGHT),
-		Rule(2, 1, Dir.UP), Rule(2, 1, Dir.DOWN), Rule(2, 1, Dir.LEFT), Rule(2, 1, Dir.RIGHT)
+		Rule(2, 1, Dir.UP), Rule(2, 1, Dir.DOWN), Rule(2, 1, Dir.LEFT), Rule(2, 1, Dir.RIGHT),
+        Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
 	]
 	# Create Wave-funciton collapse object
-	wf = WFCollapse2D([25, 25], 3, rules, weights=[5, 7.5, 5])
+	wf = WFCollapse2D([50, 50], 3, rules, weights=[5, 4, 5])
 
 	# open a new window
 	screen = pygame.display.set_mode((500, 500))
