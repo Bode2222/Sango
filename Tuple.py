@@ -35,9 +35,6 @@ class Tuple2D(Tuple):
         self.wid = dims[1]
         self.grid = [[Cell(n_tiles) for i in range(self.wid)] for ii in range(self.len)]
 
-        # Set context dimensions to odd numbers
-        if context_dims[0] % 2 == 0:    context_dims[0] += 1
-        if context_dims[1] % 2 == 0:    context_dims[1] += 1
         self.con_dims = context_dims
 
         # Generate context for each cell and store it in a list
@@ -89,9 +86,26 @@ class Tuple2D(Tuple):
         else:
             return Cell.Null()
 
+    def get_pos_context(self, loc):
+        if (loc[0] >= 0 and loc[1] >= 0 and loc[0] < self.len and loc[1] < self.wid):
+            return [self.grid[loc[0]][loc[1]], self._con_list[loc[0] * self.wid + loc[1]]]
+        else:
+            return [Cell.Null(), []]
+
     def get_context(self, loc):
-        self._con_list[loc[0] * self.wid + loc[1]]
+        if (loc[0] >= 0 and loc[1] >= 0 and loc[0] < self.len and loc[1] < self.wid):
+            return self._con_list[loc[0] * self.wid + loc[1]]
+        else:
+            return []
+
+    def loc_to_index(self, loc):
+        return loc[0] * self.wid + loc[1]
+
+    def index_to_loc(self, index):
+        return [int(index/self.wid), index%self.wid]
 
 if __name__ == '__main__':
     grid = Tuple2D(0, [7, 5])
+    print(grid.loc_to_index([2, 2]))
+    print(grid.index_to_loc(grid.loc_to_index([2, 2])))
     print("Tuple program Terminated")

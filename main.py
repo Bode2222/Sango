@@ -44,7 +44,7 @@ if __name__ == '__main__':
         Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
 	]
 	# Create Wave-funciton collapse object
-	wf = WFCollapse2D([50, 50], 3, rules, weights=[5, 4, 5])
+	wf = WFCollapse2D([35, 35], 3, rules, weights=[5, 4, 5])
 
 	# open a new window
 	screen = pygame.display.set_mode((500, 500))

@@ -1,6 +1,7 @@
 # Implementation Details here: https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
 import math
 import random
+from traceback import print_tb
 import numpy as np
 import time
 from Tuple import Tuple2D
@@ -44,8 +45,16 @@ class WFCollapse2D(WaveFunctionCollapse):
         self._rules = rules
         self._n_tiles = n_tiles
         self._strategy = strategy
+        self._context_dims = context_dims
+        # init grid
         self._grid = self._getTupleObject(n_tiles, dims, context_dims)
         self._adj = self._gen_adjacency_matrix()
+
+        # Weight entropy storage stuff
+        self._min_entropy = float('inf')
+        self._min_ent_list = set()
+        # Buffer to store weight, entropy pairs for each cell
+        self._weight_entropy = [[[], float('inf')] for i in range(len(self._grid))]
 
         # Weight handling. if no weights, give even weights for all
         self._weights = weights
@@ -59,7 +68,10 @@ class WFCollapse2D(WaveFunctionCollapse):
         else:
             self._orig_inv = [inventory[i] if i in inventory.keys() else -1 for i in range(n_tiles)]
         self._inv = self._orig_inv
-        
+
+        # set all the weights in the grid
+        self._set_weights([i for i in range(len(self._grid))])
+    
     # Place a cell at a given location
     def place(self, loc, val):
         # Update weights
@@ -94,95 +106,111 @@ class WFCollapse2D(WaveFunctionCollapse):
             res[r.t1 * self.NUM_DIRS + ((r.dir+2) % self.NUM_DIRS)][r.t2] = True
         return np.array(res)
 
-    # When a tile has run out of stock in the inventory remove it from all cells
-    # Generate weights and Calculate the entropy for each cell using shannon entropy shown below, and selects the cell with the lowest entropy
-    # Choose lowest entropy from entropy buffer. if its empty calculate it
+    # Calculate all the weight, entropy pairs for all the cells in the grid
+    # takes a list of cell indexes
     # shannon_entropy_for_square = log(sum(weight)) - (sum(weight * log(weight)) / sum(weight))
-    def _get_lowest_entropy(self):
-        i = 0
-        min_index = -1
-        min_entropy = float('inf')
+    def _set_weights(self, loc):
+        # For every cell in the location list, get its cell and context, calc its weights and entropy, store em
+        for i in range(len(loc)):
+            pos = self._grid.index_to_loc(loc[i])
+            curCell, context = self._grid.get_pos_context(pos)
+            index = loc[i]
+            # store the newly calculated weights and entropy
+            weights, entropy = self._calc_weight_entropy(curCell, context)
+            self._weight_entropy[index][0] = weights
+            self._weight_entropy[index][1] = entropy
 
-        # Keeps track of all the cells that have the minimum entropy and randomly selects from it
-        min_ent_list = []
-        for curCell, context in self._grid:
-            # If a cell has already chosen a tile, skip it
-            if curCell.chosen_tile != -1:
-                i += 1
-                continue
-
-            sum_weight = 0
-            log_sum_weight = 0
-
-            # update self._weights as its needed in the calculation of entropy
-            self._set_weights(context)
-
-            no_active_tiles = True
-            # Go through all the active tiles that can be chosen and add up their weights
-            for ii in range(len(curCell.tile_active)):
-                if curCell.tile_active[ii]:
-                    if self._inv[ii] == 0:
-                        curCell.tile_active[ii] = False
-                        continue
-                    no_active_tiles = False
-                    sum_weight += self._weights[ii]
-                    log_sum_weight += self._weights[ii] * math.log(self._weights[ii])
-
-            # If a cell has no tiles that can be chosen, select the 'none' tile and skip it
-            if no_active_tiles:
-                i += 1
-                curCell.chosen_tile = -2
-                continue
-            # Calculate the entropy from the summed weights
-            entropy = math.log(sum_weight) - log_sum_weight / sum_weight
-            # compare to minimum
-            if entropy < min_entropy:
-                min_ent_list = [i]
-                min_entropy = entropy
-            elif entropy == min_entropy:
-                min_ent_list.append(i)
+            # compare to minimum and add to min array accordingly
+            if entropy < self._min_entropy or len(self._min_ent_list) == 0:
+                self._min_ent_list = [pos]
+                self._min_entropy = entropy
+            # if it has the same entropy and is not already in the list
+            elif entropy == self._min_entropy and pos not in self._min_ent_list:
+                self._min_ent_list.append(pos)
             i += 1
+        
+        if self._min_entropy == float('inf'):
+            for i in range(len(self._grid)):
+                pos = self._grid.index_to_loc(i)
+                weights = self._weight_entropy[i][0]
+                entropy = self._weight_entropy[i][1]
+                
+                # compare to minimum and add to min array accordingly
+                if entropy < self._min_entropy:
+                    self._min_ent_list = [pos]
+                    self._min_entropy = entropy
+                # if it has the same entropy and is not already in the list
+                elif entropy == self._min_entropy and pos not in self._min_ent_list:
+                    self._min_ent_list.append(pos)
+        
+    # returns weight and entropy for single cell
+    def _calc_weight_entropy(self, curCell, context):
+        weight = []
+        # If a cell has already chosen a tile, skip it
+        if curCell.chosen_tile != -1:
+            return [weight, float('inf')]
+        
+        weight = self._gen_weights(context)
+        sum_weight = 0
+        log_sum_weight = 0
+        no_active_tiles = True
+
+        # Go through all the active tiles that can be chosen and add up their weights
+        for ii in range(len(curCell.tile_active)):
+            if curCell.tile_active[ii]:
+                # When a tile has run out of stock in the inventory remove it from all cells
+                if self._inv[ii] == 0:
+                    curCell.tile_active[ii] = False
+                    continue
+                no_active_tiles = False
+                sum_weight += weight[ii]
+                log_sum_weight += weight[ii] * math.log(weight[ii])
+
+        # If a cell has no tiles that can be chosen, select the 'none' tile and skip it
+        if no_active_tiles:
+            curCell.chosen_tile = -2
+            return [weight, float('inf')]
+            
+        # Calculate the entropy from the summed weights
+        entropy = math.log(sum_weight) - log_sum_weight / sum_weight
+        return [weight, entropy]
+
+    # selects the cell with the lowest entropy
+    def _get_lowest_entropy(self):
+        #self._set_weights([i for i in range(len(self._grid))])
 
         # If we couldnt calcuate the entropy of a single cell then all the cells have chosen tiles and the program is over
-        if min_entropy == float('inf'):
+        if self._min_entropy == float('inf'):
             return [-1]
         
-        # chosen cell is randomly selected from list of cells at the minimum entropy
-        min_index = random.choice(min_ent_list)
+        # chosen cell is randomly selected from list of cells at the minimum entropy and removed from list
+        min_loc = self._min_ent_list.pop(random.randrange(len(self._min_ent_list)))
 
         # Return the location of the cell with min entropy
-        # if the order we iterate throught the grid changes this needs to change as well
-        if len(self._dims) == 2:
-            return [min_index % self._dims[0], int(min_index/self._dims[0])]
-        else:
-            x = int(min_index/(self._dims[1]*self._dims[0]))
-            min_index -= x * self._dims[1] * self._dims[0]
-            y = int(min_index/(self._dims[1]))
-            z = min_index % self.dims[1]
-            return [x, y, z]
+        return min_loc
 
     # Randomly select an option from remaining options
     def _collapse(self, loc):
-        self._set_weights(self._grid.get_context(loc))
         # Get list of available tiles
         available_tile_ids = [x for x in range(len(self._grid.get_pos(loc).tile_active)) if self._grid.get_pos(loc).tile_active[x]]
-        available_weights = [self._weights[x] for x in range(len(self._grid.get_pos(loc).tile_active)) if self._grid.get_pos(loc).tile_active[x]]
+        available_weights = [self._weight_entropy[self._grid.loc_to_index(loc)][0][x] for x in range(len(self._grid.get_pos(loc).tile_active)) if self._grid.get_pos(loc).tile_active[x]]
 
         # choose a random tile
         chosen_tile = random.choices(available_tile_ids, weights=available_weights)[0]
         # Set chosen tile to cell value
         self._grid.get_pos(loc).chosen_tile = chosen_tile
+        # Set cell entropy to infinite
+        self._weight_entropy[loc[0] * self._grid.wid + loc[1]][1] = float('inf')
         # Remove tile from inventory
         if self._inv[chosen_tile] > 0:
             self._inv[chosen_tile] -= 1
 
-        # Remove all other tiles from available tile list
-        for i in range(len(self._grid.get_pos(loc).tile_active)):
-            if i != chosen_tile:
-                self._grid.get_pos(loc).tile_active[i] = False
         return chosen_tile
 
+    # after propagating, keep a list of all the cells that changed and update their weights based on their contexts
     def _propagate(self, loc):
+        # set of cells who were affected by propagation, i.e set of cells whose contexts were changed and update their weights and entropies
+        affected_cells = set()
         # Add current cell to the stack
         stack = [loc]
         # While the stack is not empty
@@ -190,21 +218,37 @@ class WFCollapse2D(WaveFunctionCollapse):
             # pop the stack
             pos = stack.pop()
             # If this cell has no tiles to choose from just ignore it
-            if np.count_nonzero(self._grid.get_pos(pos).tile_active) == 0:
+            if np.count_nonzero(self._grid.get_pos(pos).tile_active) == 0 or self._grid.get_pos(pos).chosen_tile == -2:
                 continue
-            # Go through my available tiles and or their different directional adjaceny tiles.
-            north = np.array([False for i in range(self._n_tiles)])
-            east = np.array([False for i in range(self._n_tiles)])
-            south = np.array([False for i in range(self._n_tiles)])
-            west = np.array([False for i in range(self._n_tiles)])
 
-            # If this cell is available to us, logical or its rules into our sum of available tiles for a given direction
-            for i in range(self._n_tiles):
-                if self._grid.get_pos(pos).tile_active[i]:
-                    north = np.logical_or(north, self._adj[i * 4 + Dir.UP])
-                    east = np.logical_or(east, self._adj[i * 4 + Dir.RIGHT])
-                    south = np.logical_or(south, self._adj[i * 4 + Dir.DOWN])
-                    west = np.logical_or(west, self._adj[i * 4 + Dir.LEFT])
+            # add the context of this tile into the affected cells pile
+            lx = int(self._context_dims[0]/2)
+            ly = int(self._context_dims[1]/2)
+            for x in range(-lx, lx + 1):
+                for y in range(-ly, ly + 1):
+                    loc = [pos[0] + x, pos[1] + y]
+                    if (loc[0] >= 0 and loc[1] >= 0 and loc[0] < self._dims[0] and loc[1] < self._dims[1]):
+                        affected_cells.add(self._grid.loc_to_index(loc))
+
+            # Get the list of tiles allowed beside current tile: Go through my available tiles and 'or' their different directional adjaceny tiles.
+            north = south = east = west = []
+            if self._grid.get_pos(pos).chosen_tile != -1:
+                north = np.array(self._adj[self._grid.get_pos(pos).chosen_tile * 4 + Dir.UP])
+                east = np.array(self._adj[self._grid.get_pos(pos).chosen_tile * 4 + Dir.RIGHT])
+                south = np.array(self._adj[self._grid.get_pos(pos).chosen_tile * 4 + Dir.DOWN])
+                west = np.array(self._adj[self._grid.get_pos(pos).chosen_tile * 4 + Dir.LEFT])
+            else:
+                north = np.array([False for i in range(self._n_tiles)])
+                east = np.array([False for i in range(self._n_tiles)])
+                south = np.array([False for i in range(self._n_tiles)])
+                west = np.array([False for i in range(self._n_tiles)])
+                # If this cell is available to us, logical or its rules into our sum of available tiles for a given direction
+                for i in range(self._n_tiles):
+                    if self._grid.get_pos(pos).tile_active[i]:
+                        north = np.logical_or(north, self._adj[i * 4 + Dir.UP])
+                        east = np.logical_or(east, self._adj[i * 4 + Dir.RIGHT])
+                        south = np.logical_or(south, self._adj[i * 4 + Dir.DOWN])
+                        west = np.logical_or(west, self._adj[i * 4 + Dir.LEFT])
             
             # Eliminate neighbor possibilities based on rules
             for x, y in [[0, 1], [1, 0], [0, -1], [-1, 0]]:
@@ -212,29 +256,32 @@ class WFCollapse2D(WaveFunctionCollapse):
                     if (n_pos[0] < 0 or n_pos[0] >= self._dims[0] or n_pos[1] < 0 or n_pos[1] >= self._dims[1]):
                         continue
                     curCell = self._grid.get_pos(n_pos)
-                    # Get adjacency rule based on chosen tile
+                    # Get adjacency rule based on chosen tile. If the permutation of tile active changes add it to the stack
                     # Go through every tile in the tile_active list and OR the result, then AND that with the corresponding neighbor
                     adj = []
-                    if (x == 0 and y == -1 and n_pos[1] >= 0):
+                    if (y == -1 and n_pos[1] >= 0):
                         north &= curCell.tile_active
                         if (curCell.chosen_tile == -1 and not np.allclose(north, curCell.tile_active)):
                             curCell.tile_active = list(north)
                             stack.append(n_pos)
-                    elif (x == 1 and y == 0 and n_pos[0] < self._dims[0]):
+                    elif (x == 1 and n_pos[0] < self._dims[0]):
                         east &= curCell.tile_active
                         if (curCell.chosen_tile == -1 and not np.allclose(east, curCell.tile_active)):
                             curCell.tile_active = list(east)
                             stack.append(n_pos)
-                    elif (x == 0 and y == 1 and n_pos[1] < self._dims[1]):
+                    elif (y == 1 and n_pos[1] < self._dims[1]):
                         south &= curCell.tile_active
                         if (curCell.chosen_tile == -1 and not np.allclose(south, curCell.tile_active)):
                             curCell.tile_active = list(south)
                             stack.append(n_pos)
-                    elif (x == -1 and y == 0 and n_pos[0] >= 0):
+                    elif (x == -1 and n_pos[0] >= 0):
                         west &= curCell.tile_active
                         if (curCell.chosen_tile == -1 and not np.allclose(west, curCell.tile_active)):
                             curCell.tile_active = list(west)
                             stack.append(n_pos)
+        
+        # change cell indexes back to locations, make them into a list then recalculate every affected cell
+        self._set_weights(list(affected_cells))
                         
     # Generate weights given context
     def _gen_weights(self, context):
@@ -245,10 +292,6 @@ class WFCollapse2D(WaveFunctionCollapse):
 
     def _basic_weight_strategy(self, context):
         return self._weights
-
-    # set weights to new values calculated based on context of given cell location
-    def _set_weights(self, context):
-        self._weights = self._gen_weights(context)
 
 # Given a grid, iterate over it and add every rule found in it
 def extractRules2D(grid: Tuple2D):
@@ -264,10 +307,11 @@ def extractRules2D(grid: Tuple2D):
     pass
 
 # TODO: Make function to turn tuple2d into list of rules
-# TODO: Make it so only cells whose contexts were changed need to have an entropy recalculation. we need an entropy buffer
-# TODO: Update entropy buffer in the propagate function. every item on the stack gets a weight recalc after its changes are propagated as long as it hasnt chosen a tile. 
-# when we collapse a cell set its entropy to inifinte
-if __name__ == '__main__':
+# TODO: Add a price system and put in the prices of each tiles. Use this to determine which tiles can be placed during tile selection. 
+# this means each step if the amount of currency possessed has changed (increased past the next most expensive item or decreased lower than the current most expensive) we need to update the entire boards weights
+# TODO: Use my gpu to do entropy calculation somehow?
+# TODO: Make our ai powered result work with the 'Terminal' game
+if __name__ == '__main__': 
     # Set random seed for consistent results
     random.seed(a=1235)
 
@@ -282,12 +326,11 @@ if __name__ == '__main__':
         Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
     ]
     # Create Wave-funciton collapse object
-    test = WFCollapse2D([35, 35], 3, rules, inventory={0: -1, 1: -1})
+    test = WFCollapse2D(dims=[35, 35], n_tiles=3, rules=rules, inventory={0: -1, 1: -1})
 
     # Keep stepping till generation is done
     start_time = time.time()
-    while test.step():
-        pass
+    while test.step():  pass
     print(str(test._grid))
     print("Execution time: %s seconds" % (time.time() - start_time))
 
