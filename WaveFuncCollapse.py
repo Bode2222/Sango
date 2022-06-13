@@ -1,7 +1,6 @@
 # Implementation Details here: https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
 import math
 import random
-from traceback import print_tb
 import numpy as np
 import time
 from Tuple import Tuple2D
@@ -40,13 +39,15 @@ class WFCollapse2D(WaveFunctionCollapse):
     NUM_DIRS = 4
 
     # inventory maps tile id to number of units available for use. if number of units is -1, that means infinite available
-    def __init__(self, dims, n_tiles, rules, weight_genner= "BASIC", inventory={-1: -1}, weights=[-1], context_space= "LOCAL", context_dims=[3, 3]):
+    def __init__(self, dims, n_tiles, rules, weight_genner= "BASIC", inventory={-1: -1}, weights=[-1], context_space= "LOCAL", context_dims=[3, 3], prices={-1: 0}, money=10):
         self._dims = dims
         self._rules = rules
         self._n_tiles = n_tiles
         self._weight_genner = weight_genner
         self._context_dims = context_dims
         self._context_space = context_space
+        self._bank = money
+        self._orig_bank = money
         # init grid
         self._grid = self._getTupleObject(n_tiles, dims, context_dims, context_space)
         self._adj = self._gen_adjacency_matrix()
@@ -62,7 +63,7 @@ class WFCollapse2D(WaveFunctionCollapse):
         if weights[0] == -1:
             self._weights = [1/n_tiles for i in range(n_tiles)]
         
-        # Inventory handling. if not set, set all to infinity. Ti
+        # Inventory handling. if not set, set all to infinity.
         self._orig_inv = inventory
         if -1 in inventory.keys():
             self._orig_inv = [-1 for i in range(n_tiles)]
@@ -70,25 +71,52 @@ class WFCollapse2D(WaveFunctionCollapse):
             self._orig_inv = [inventory[i] if i in inventory.keys() else -1 for i in range(n_tiles)]
         self._inv = self._orig_inv
 
+        # Price handling. If not set, set all to 0
+        if -1 in prices.keys():
+            self._prices = [0 for i in range(n_tiles)]
+        else:
+            self._prices = [prices[i] if i in prices.keys() else 0 for i in range(n_tiles)]
+        # Used to determine when it is time to update ever cell. This is when our current currency crosses a tile price
+        self._sorted_prices = self._prices.copy()
+        self._sorted_prices.sort()
+        self._ready_to_buy = np.array([False for i in range(n_tiles)])
+        # Move the price tracker so I can know when it crosses a tile piece
+        self._set_price_tracker()
+        self._price_change = False
+        
+
         # set all the weights in the grid
         self._set_weights([i for i in range(len(self._grid))])
+
+    # Move the price tracker so I can know when it crosses a tile piece
+    # Also update the ready to buy list so i know what I can buy
+    def _set_price_tracker(self):
+        # update tracker
+        self._price_tracker = -1
+        for price in self._sorted_prices: 
+            if self._bank >= price:
+                self._price_tracker += 1
+
+        # update ready to buy list
+        self._ready_to_buy =np.array([False if price > self._bank else True for price in self._prices])
     
-    # Place a cell at a given location
-    def place(self, loc, val):
-        # Update weights
-        self._get_lowest_entropy()
+    # Place a cell at a given location.
+    def place(self, loc, chosen_tile):
         # Set chosen tile to cell value
-        self._grid.get_cell(loc).chosen_tile = val
-        # Remove all other tiles from available tile list
-        for i in range(len(self._grid.get_cell(loc).tile_active)):
-            if i != val:
-                self._grid.get_cell(loc).tile_active[i] = False
+        self._grid.get_cell(loc).chosen_tile = chosen_tile
+        # Set cell entropy to infinite
+        self._weight_entropy[loc[0] * self._grid.wid + loc[1]][1] = float('inf')
+        # Remove tile from inventory
+        if chosen_tile > 0 and self._inv[chosen_tile] > 0:
+            self._inv[chosen_tile] -= 1
         self._propagate(loc)
 
     # Reset entire grid to pre changed form
     def reset(self):
         self._grid = self._getTupleObject(self._n_tiles, self._dims, self._context_dims, self._context_space)
         self._inv = self._orig_inv
+        self._bank = self._orig_bank
+        self._set_price_tracker()
         # Weight entropy storage stuff
         self._min_entropy = float('inf')
         self._min_ent_list = set()
@@ -119,6 +147,9 @@ class WFCollapse2D(WaveFunctionCollapse):
     # takes a list of cell indexes
     # shannon_entropy_for_square = log(sum(weight)) - (sum(weight * log(weight)) / sum(weight))
     def _set_weights(self, loc):
+        # If there is nothing to update, set the min_entropy to infinity and call it a day
+        if len(loc) == 0:
+            self._min_entropy = float('inf')
         # For every cell in the location list, get its cell and context, calc its weights and entropy, store em
         for i in range(len(loc)):
             pos = self._grid.index_to_loc(loc[i])
@@ -163,6 +194,7 @@ class WFCollapse2D(WaveFunctionCollapse):
         sum_weight = 0
         log_sum_weight = 0
         no_active_tiles = True
+        curCell.tile_active = np.logical_and(curCell.tile_active, self._ready_to_buy)
 
         # Go through all the active tiles that can be chosen and add up their weights
         for ii in range(len(curCell.tile_active)):
@@ -186,13 +218,13 @@ class WFCollapse2D(WaveFunctionCollapse):
 
     # selects the cell with the lowest entropy
     def _get_lowest_entropy(self):
-        #self._set_weights([i for i in range(len(self._grid))])
-
         # If we couldnt calcuate the entropy of a single cell then all the cells have chosen tiles and the program is over
         if self._min_entropy == float('inf'):
             return [-1]
         
         # chosen cell is randomly selected from list of cells at the minimum entropy and removed from list
+        if len(self._min_ent_list) == 0:
+            print(self._min_entropy)
         min_loc = self._min_ent_list.pop(random.randrange(len(self._min_ent_list)))
 
         # Return the location of the cell with min entropy
@@ -204,6 +236,10 @@ class WFCollapse2D(WaveFunctionCollapse):
         available_tile_ids = [x for x in range(len(self._grid.get_cell(loc).tile_active)) if self._grid.get_cell(loc).tile_active[x]]
         available_weights = [self._weight_entropy[self._grid.loc_to_index(loc)][0][x] for x in range(len(self._grid.get_cell(loc).tile_active)) if self._grid.get_cell(loc).tile_active[x]]
 
+        if len(available_tile_ids) == 0:
+            self._grid.get_cell(loc).chosen_tile = -2
+            return -2
+
         # choose a random tile
         chosen_tile = random.choices(available_tile_ids, weights=available_weights)[0]
         # Set chosen tile to cell value
@@ -213,6 +249,21 @@ class WFCollapse2D(WaveFunctionCollapse):
         # Remove tile from inventory
         if self._inv[chosen_tile] > 0:
             self._inv[chosen_tile] -= 1
+        # Subtract price from bank
+        self._bank -= self._prices[chosen_tile]
+        # Check if bank crossed tile price. if it did, update entire grid and set the new price tracker
+        if self._price_tracker >= 0:
+            if self._bank < self._sorted_prices[self._price_tracker]:
+                self._price_change = True
+                self._set_price_tracker()
+            elif self._price_tracker < self._n_tiles - 1 and self._bank >= self._sorted_prices[self._price_tracker + 1]:
+                self._price_change = True
+                self._set_price_tracker()
+        else:
+            if self._bank >= self._sorted_prices[0]:
+                self._price_change = True
+                self._set_price_tracker()
+
 
         return chosen_tile
 
@@ -231,9 +282,8 @@ class WFCollapse2D(WaveFunctionCollapse):
                 continue
 
             # add the context of this tile into the affected cells pile
-            lx = int(self._context_dims[0]/2)
-            ly = int(self._context_dims[1]/2)
-            affected_cells.update(list(map(self._grid.loc_to_index, self._grid.get_context_positions(pos))))
+            if not self._price_change:
+                affected_cells.update(list(map(self._grid.loc_to_index, self._grid.get_context_positions(pos))))
 
             # Get the list of tiles allowed beside current tile: Go through my available tiles and 'or' their different directional adjaceny tiles.
             north = south = east = west = []
@@ -285,6 +335,10 @@ class WFCollapse2D(WaveFunctionCollapse):
                             curCell.tile_active = list(west)
                             stack.append(n_pos)
         
+        # if the price crossed a tile price update entire board
+        if self._price_change:
+            affected_cells = [x for x in range(len(self._grid))]
+            self._price_change = False
         # change cell indexes back to locations, make them into a list then recalculate every affected cell
         self._set_weights(list(affected_cells))
                         
@@ -331,13 +385,14 @@ if __name__ == '__main__':
         Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
     ]
     # Create Wave-funciton collapse object
-    test = WFCollapse2D(dims=[28, 28], n_tiles=3, rules=rules, inventory={0: -1, 1: -1})
+    test = WFCollapse2D(dims=[35, 35], n_tiles=3, rules=rules, inventory={0: -1, 1: -1}, prices={0: 1, 1: 2, 2: 3}, money= 300)
 
     # Keep stepping till generation is done
     start_time = time.time()
     while test.step():  pass
     stop_time = time.time()
     print(str(test._grid))
+    print("Cash left: " + str(test._bank))
     print("Execution time: %s seconds" % (stop_time - start_time))
 
     print("WaveFunc Program terminated")

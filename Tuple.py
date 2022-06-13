@@ -9,7 +9,7 @@ class Cell:
         self.chosen_tile = -1
     
     def __str__(self):
-        return str(self.chosen_tile)
+        return "%02d" % self.chosen_tile
 
     # Return a 'null' cell
     def Null():
