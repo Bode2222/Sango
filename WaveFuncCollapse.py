@@ -20,6 +20,12 @@ class Rule:
         self.t1 = t1
         self.t2 = t2
         self.dir = dir
+    
+    def __eq__(self, other):
+        return self.t1 == other.t1 and self.t2 == other.t2 and self.dir == other.dir
+
+    def __hash__(self):
+        return hash(str(self.t1) + str(self.t2) + str(self.dir))
 
 # WF Collapse interface
 class WaveFunctionCollapse:
@@ -352,22 +358,44 @@ class WFCollapse2D(WaveFunctionCollapse):
     def _basic_weight_strategy(self, context, pos):
         return self._weights
 
-# Given a grid, iterate over it and add every rule found in it
-def extractRules2D(grid: Tuple2D):
+# Given a grid, iterate over it and add every rule found in it as well as the frequency of each tile
+def extractRulesAndFrequencies2D(grid: Tuple2D):
     # Set to place results
     result = set()
+    tile_frequency = []
+    seen_tiles = {}
     for x in range(grid.len):
         for y in range(grid.wid):
-            # For every adjacent tile
-            #if (x + 1)
-            pass
+            # check this tile and its neighbors
+            # if we havent seen them before, register it and start counting their occurences. if we have just increase its occurences
+            c_t = grid.get_cell([x, y]).chosen_tile
+            c_t_n = grid.get_cell([x, y-1]).chosen_tile
+            c_t_e = grid.get_cell([x + 1, y]).chosen_tile
+            c_t_w = grid.get_cell([x, y + 1]).chosen_tile
+            c_t_s = grid.get_cell([x - 1, y]).chosen_tile
+            for chosen in [c_t, c_t_n, c_t_e, c_t_s, c_t_w]:
+                if chosen not in seen_tiles.keys():
+                    seen_tiles[chosen] = len(tile_frequency)
+                    tile_frequency.append(1)
+                else:
+                    tile_frequency[seen_tiles[chosen]] += 1
 
-            pass
-    pass
+            # Check around it to get its rules
+            if y > 0:
+                result.add(Rule(seen_tiles[c_t], seen_tiles[c_t_n], Dir.UP))
+                result.add(Rule(seen_tiles[c_t_n], seen_tiles[c_t], Dir.DOWN))
+            if x < grid.len:
+                result.add(Rule(seen_tiles[c_t], seen_tiles[c_t_e], Dir.RIGHT))
+                result.add(Rule(seen_tiles[c_t_e], seen_tiles[c_t], Dir.LEFT))
+            if y < grid.wid:
+                result.add(Rule(seen_tiles[c_t], seen_tiles[c_t_s], Dir.DOWN))
+                result.add(Rule(seen_tiles[c_t_s], seen_tiles[c_t], Dir.UP))
+            if x > 0:
+                result.add(Rule(seen_tiles[c_t], seen_tiles[c_t_w], Dir.RIGHT))
+                result.add(Rule(seen_tiles[c_t_w], seen_tiles[c_t], Dir.LEFT))
+    return [result, tile_frequency]
 
-# TODO: Make function to turn tuple2d into list of rules
-# TODO: Add a price system and put in the prices of each tiles. Use this to determine which tiles can be placed during tile selection. 
-# this means each step if the amount of currency possessed has changed (increased past the next most expensive item or decreased lower than the current most expensive) we need to update the entire boards weights
+# TODO: Make a weight genner that takes in some sample image and spits out how many times the other tiles appeared based on what tile was placed in a spot
 # TODO: Use my gpu to do entropy calculation somehow?
 # TODO: Make our ai powered result work with the 'Terminal' game
 if __name__ == '__main__': 
@@ -394,5 +422,10 @@ if __name__ == '__main__':
     print(str(test._grid))
     print("Cash left: " + str(test._bank))
     print("Execution time: %s seconds" % (stop_time - start_time))
+
+    rules2, frequencies = extractRulesAndFrequencies2D(test._grid)
+    test2 = WFCollapse2D(dims=[35, 35], n_tiles=len(frequencies), rules = rules2, weights=frequencies)
+    while test2.step():  pass
+    print(str(test2._grid))
 
     print("WaveFunc Program terminated")
