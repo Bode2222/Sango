@@ -30,15 +30,18 @@ class Tuple:
 
 class Tuple2D(Tuple):
     # given number of tiles a cell can become, dimensions of grid, and dimensions of area around a cell to give as context
-    def __init__(self, n_tiles, dims, context_dims=[3, 3]):
+    # strat or strategy determines which context should be returned when asked
+    def __init__(self, n_tiles, dims, context_dims=[3, 3], strat="LOCAL"):
         self.len = dims[0]
         self.wid = dims[1]
+        self._strat = strat
         self.grid = [[Cell(n_tiles) for i in range(self.wid)] for ii in range(self.len)]
 
         self.con_dims = context_dims
 
         # Generate context for each cell and store it in a list
         self._con_list = self._generate_contexts()
+        self._global_list = [[x, y] for y in range(self.wid) for x in range(self.len)]
 
     # return each cell and the cells that surrond it  within the dimensions 'self._con_dims'
     def __iter__(self):
@@ -80,11 +83,15 @@ class Tuple2D(Tuple):
 
     # Get list of context cell locations given a location
     def get_context_positions(self, loc):
-        return self._con_list[self.loc_to_index(loc)]
+        if self._strat == "LOCAL":
+            return self._con_list[self.loc_to_index(loc)]
+        elif self._strat == "GLOBAL":
+            return self._global_list
+        
 
     # Get list of context cells given a location
     def get_context_cells(self, loc):
-        return list(map(self.get_cell, self._con_list[self.loc_to_index(loc)]))
+        return list(map(self.get_cell, self.get_context_positions(loc)))
 
     # Set a location on the grid to a val
     def set_pos(self, loc, val):
