@@ -31,10 +31,10 @@ class Tuple:
 class Tuple2D(Tuple):
     # given number of tiles a cell can become, dimensions of grid, and dimensions of area around a cell to give as context
     # strat or strategy determines which context should be returned when asked
-    def __init__(self, n_tiles, dims, context_dims=[3, 3], strat="LOCAL"):
+    def __init__(self, n_tiles, dims, context_dims=[3, 3], context_space="LOCAL"):
         self.len = dims[0]
         self.wid = dims[1]
-        self._strat = strat
+        self._strat = context_space
         self.grid = [[Cell(n_tiles) for i in range(self.wid)] for ii in range(self.len)]
 
         self.con_dims = context_dims

@@ -1,4 +1,3 @@
-import random
 import pygame
 from WaveFuncCollapse import Rule, WFCollapse2D, Dir
 
@@ -23,7 +22,7 @@ def draw2D(grid, tile_colors, screen):
 	for y in range(grid.wid):
 		for x in range(grid.len):
 			#rect = pygame.Rect(x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID, tile_colors[grid.get_pos([x, y]).chosen_tile + 1])
-			color = tile_colors[grid.get_pos([x, y]).chosen_tile + 1]
+			color = tile_colors[grid.get_cell([x, y]).chosen_tile + 1]
 			rect = pygame.draw.rect(screen, color, [x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID], 0)
 
 if __name__ == '__main__':
@@ -63,7 +62,9 @@ if __name__ == '__main__':
 				running = False # Flag that we are done so we can exit the while loop
 	
 		# --- Game logic should go here
-		wf.step()
+		if not wf.step():
+			pygame.time.delay(1000)
+			wf.reset()
 	
 		# --- Drawing code should go here
 		# First, clear the screen to white. 

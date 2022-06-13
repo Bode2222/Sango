@@ -40,14 +40,15 @@ class WFCollapse2D(WaveFunctionCollapse):
     NUM_DIRS = 4
 
     # inventory maps tile id to number of units available for use. if number of units is -1, that means infinite available
-    def __init__(self, dims, n_tiles, rules, strategy= "BASIC", inventory={-1: -1}, weights=[-1], context_dims=[3, 3]):
+    def __init__(self, dims, n_tiles, rules, weight_genner= "BASIC", inventory={-1: -1}, weights=[-1], context_space= "LOCAL", context_dims=[3, 3]):
         self._dims = dims
         self._rules = rules
         self._n_tiles = n_tiles
-        self._strategy = strategy
+        self._weight_genner = weight_genner
         self._context_dims = context_dims
+        self._context_space = context_space
         # init grid
-        self._grid = self._getTupleObject(n_tiles, dims, context_dims)
+        self._grid = self._getTupleObject(n_tiles, dims, context_dims, context_space)
         self._adj = self._gen_adjacency_matrix()
 
         # Weight entropy storage stuff
@@ -86,8 +87,16 @@ class WFCollapse2D(WaveFunctionCollapse):
 
     # Reset entire grid to pre changed form
     def reset(self):
-        self._grid = self._getTupleObject(self._n_tiles, self._dims)
+        self._grid = self._getTupleObject(self._n_tiles, self._dims, self._context_dims, self._context_space)
         self._inv = self._orig_inv
+        # Weight entropy storage stuff
+        self._min_entropy = float('inf')
+        self._min_ent_list = set()
+        # Buffer to store weight, entropy pairs for each cell
+        self._weight_entropy = [[[], float('inf')] for i in range(len(self._grid))]
+        # set all the weights in the grid
+        self._set_weights([i for i in range(len(self._grid))])
+
 
     def step(self):
         loc = self._get_lowest_entropy()
@@ -97,8 +106,8 @@ class WFCollapse2D(WaveFunctionCollapse):
         return 1
         
     # Sets the tuple object to correct subclass of tuple
-    def _getTupleObject(self, n_tiles, dims, context_dims):
-        return Tuple2D(n_tiles, dims, context_dims)
+    def _getTupleObject(self, n_tiles, dims, context_dims, context_space):
+        return Tuple2D(n_tiles, dims, context_dims, context_space=context_space)
 
     def _gen_adjacency_matrix(self):
         res = [[False for ii in range(self._n_tiles)] for i in range(self._n_tiles * self.NUM_DIRS)]
@@ -281,7 +290,7 @@ class WFCollapse2D(WaveFunctionCollapse):
                         
     # Generate weights given context
     def _gen_weights(self, context, pos):
-        if self._strategy == "BASIC":
+        if self._weight_genner == "BASIC":
             return self._basic_weight_strategy(context, pos)
         print("Unknown strategy. Defaulting to BASIC")
         return self._weights
@@ -302,7 +311,6 @@ def extractRules2D(grid: Tuple2D):
             pass
     pass
 
-# TODO: Implement context generation strategy
 # TODO: Make function to turn tuple2d into list of rules
 # TODO: Add a price system and put in the prices of each tiles. Use this to determine which tiles can be placed during tile selection. 
 # this means each step if the amount of currency possessed has changed (increased past the next most expensive item or decreased lower than the current most expensive) we need to update the entire boards weights
