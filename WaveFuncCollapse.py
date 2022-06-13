@@ -77,11 +77,11 @@ class WFCollapse2D(WaveFunctionCollapse):
         # Update weights
         self._get_lowest_entropy()
         # Set chosen tile to cell value
-        self._grid.get_pos(loc).chosen_tile = val
+        self._grid.get_cell(loc).chosen_tile = val
         # Remove all other tiles from available tile list
-        for i in range(len(self._grid.get_pos(loc).tile_active)):
+        for i in range(len(self._grid.get_cell(loc).tile_active)):
             if i != val:
-                self._grid.get_pos(loc).tile_active[i] = False
+                self._grid.get_cell(loc).tile_active[i] = False
         self._propagate(loc)
 
     # Reset entire grid to pre changed form
@@ -113,10 +113,9 @@ class WFCollapse2D(WaveFunctionCollapse):
         # For every cell in the location list, get its cell and context, calc its weights and entropy, store em
         for i in range(len(loc)):
             pos = self._grid.index_to_loc(loc[i])
-            curCell, context = self._grid.get_pos_context(pos)
             index = loc[i]
             # store the newly calculated weights and entropy
-            weights, entropy = self._calc_weight_entropy(curCell, context)
+            weights, entropy = self._calc_weight_entropy(pos)
             self._weight_entropy[index][0] = weights
             self._weight_entropy[index][1] = entropy
 
@@ -144,13 +143,14 @@ class WFCollapse2D(WaveFunctionCollapse):
                     self._min_ent_list.append(pos)
         
     # returns weight and entropy for single cell
-    def _calc_weight_entropy(self, curCell, context):
+    def _calc_weight_entropy(self, pos):
         weight = []
+        curCell, context = self._grid.get_cell_context(pos)
         # If a cell has already chosen a tile, skip it
         if curCell.chosen_tile != -1:
             return [weight, float('inf')]
         
-        weight = self._gen_weights(context)
+        weight = self._gen_weights(context, pos)
         sum_weight = 0
         log_sum_weight = 0
         no_active_tiles = True
@@ -192,13 +192,13 @@ class WFCollapse2D(WaveFunctionCollapse):
     # Randomly select an option from remaining options
     def _collapse(self, loc):
         # Get list of available tiles
-        available_tile_ids = [x for x in range(len(self._grid.get_pos(loc).tile_active)) if self._grid.get_pos(loc).tile_active[x]]
-        available_weights = [self._weight_entropy[self._grid.loc_to_index(loc)][0][x] for x in range(len(self._grid.get_pos(loc).tile_active)) if self._grid.get_pos(loc).tile_active[x]]
+        available_tile_ids = [x for x in range(len(self._grid.get_cell(loc).tile_active)) if self._grid.get_cell(loc).tile_active[x]]
+        available_weights = [self._weight_entropy[self._grid.loc_to_index(loc)][0][x] for x in range(len(self._grid.get_cell(loc).tile_active)) if self._grid.get_cell(loc).tile_active[x]]
 
         # choose a random tile
         chosen_tile = random.choices(available_tile_ids, weights=available_weights)[0]
         # Set chosen tile to cell value
-        self._grid.get_pos(loc).chosen_tile = chosen_tile
+        self._grid.get_cell(loc).chosen_tile = chosen_tile
         # Set cell entropy to infinite
         self._weight_entropy[loc[0] * self._grid.wid + loc[1]][1] = float('inf')
         # Remove tile from inventory
@@ -218,25 +218,21 @@ class WFCollapse2D(WaveFunctionCollapse):
             # pop the stack
             pos = stack.pop()
             # If this cell has no tiles to choose from just ignore it
-            if np.count_nonzero(self._grid.get_pos(pos).tile_active) == 0 or self._grid.get_pos(pos).chosen_tile == -2:
+            if np.count_nonzero(self._grid.get_cell(pos).tile_active) == 0 or self._grid.get_cell(pos).chosen_tile == -2:
                 continue
 
             # add the context of this tile into the affected cells pile
             lx = int(self._context_dims[0]/2)
             ly = int(self._context_dims[1]/2)
-            for x in range(-lx, lx + 1):
-                for y in range(-ly, ly + 1):
-                    loc = [pos[0] + x, pos[1] + y]
-                    if (loc[0] >= 0 and loc[1] >= 0 and loc[0] < self._dims[0] and loc[1] < self._dims[1]):
-                        affected_cells.add(self._grid.loc_to_index(loc))
+            affected_cells.update(list(map(self._grid.loc_to_index, self._grid.get_context_positions(pos))))
 
             # Get the list of tiles allowed beside current tile: Go through my available tiles and 'or' their different directional adjaceny tiles.
             north = south = east = west = []
-            if self._grid.get_pos(pos).chosen_tile != -1:
-                north = np.array(self._adj[self._grid.get_pos(pos).chosen_tile * 4 + Dir.UP])
-                east = np.array(self._adj[self._grid.get_pos(pos).chosen_tile * 4 + Dir.RIGHT])
-                south = np.array(self._adj[self._grid.get_pos(pos).chosen_tile * 4 + Dir.DOWN])
-                west = np.array(self._adj[self._grid.get_pos(pos).chosen_tile * 4 + Dir.LEFT])
+            if self._grid.get_cell(pos).chosen_tile != -1:
+                north = np.array(self._adj[self._grid.get_cell(pos).chosen_tile * 4 + Dir.UP])
+                east = np.array(self._adj[self._grid.get_cell(pos).chosen_tile * 4 + Dir.RIGHT])
+                south = np.array(self._adj[self._grid.get_cell(pos).chosen_tile * 4 + Dir.DOWN])
+                west = np.array(self._adj[self._grid.get_cell(pos).chosen_tile * 4 + Dir.LEFT])
             else:
                 north = np.array([False for i in range(self._n_tiles)])
                 east = np.array([False for i in range(self._n_tiles)])
@@ -244,7 +240,7 @@ class WFCollapse2D(WaveFunctionCollapse):
                 west = np.array([False for i in range(self._n_tiles)])
                 # If this cell is available to us, logical or its rules into our sum of available tiles for a given direction
                 for i in range(self._n_tiles):
-                    if self._grid.get_pos(pos).tile_active[i]:
+                    if self._grid.get_cell(pos).tile_active[i]:
                         north = np.logical_or(north, self._adj[i * 4 + Dir.UP])
                         east = np.logical_or(east, self._adj[i * 4 + Dir.RIGHT])
                         south = np.logical_or(south, self._adj[i * 4 + Dir.DOWN])
@@ -255,7 +251,7 @@ class WFCollapse2D(WaveFunctionCollapse):
                     n_pos = [pos[0] + x, pos[1] + y]
                     if (n_pos[0] < 0 or n_pos[0] >= self._dims[0] or n_pos[1] < 0 or n_pos[1] >= self._dims[1]):
                         continue
-                    curCell = self._grid.get_pos(n_pos)
+                    curCell = self._grid.get_cell(n_pos)
                     # Get adjacency rule based on chosen tile. If the permutation of tile active changes add it to the stack
                     # Go through every tile in the tile_active list and OR the result, then AND that with the corresponding neighbor
                     adj = []
@@ -284,13 +280,13 @@ class WFCollapse2D(WaveFunctionCollapse):
         self._set_weights(list(affected_cells))
                         
     # Generate weights given context
-    def _gen_weights(self, context):
+    def _gen_weights(self, context, pos):
         if self._strategy == "BASIC":
-            return self._weights
+            return self._basic_weight_strategy(context, pos)
         print("Unknown strategy. Defaulting to BASIC")
         return self._weights
 
-    def _basic_weight_strategy(self, context):
+    def _basic_weight_strategy(self, context, pos):
         return self._weights
 
 # Given a grid, iterate over it and add every rule found in it
@@ -306,6 +302,7 @@ def extractRules2D(grid: Tuple2D):
             pass
     pass
 
+# TODO: Implement context generation strategy
 # TODO: Make function to turn tuple2d into list of rules
 # TODO: Add a price system and put in the prices of each tiles. Use this to determine which tiles can be placed during tile selection. 
 # this means each step if the amount of currency possessed has changed (increased past the next most expensive item or decreased lower than the current most expensive) we need to update the entire boards weights
@@ -326,12 +323,13 @@ if __name__ == '__main__':
         Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
     ]
     # Create Wave-funciton collapse object
-    test = WFCollapse2D(dims=[35, 35], n_tiles=3, rules=rules, inventory={0: -1, 1: -1})
+    test = WFCollapse2D(dims=[28, 28], n_tiles=3, rules=rules, inventory={0: -1, 1: -1})
 
     # Keep stepping till generation is done
     start_time = time.time()
     while test.step():  pass
+    stop_time = time.time()
     print(str(test._grid))
-    print("Execution time: %s seconds" % (time.time() - start_time))
+    print("Execution time: %s seconds" % (stop_time - start_time))
 
     print("WaveFunc Program terminated")
