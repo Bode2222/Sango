@@ -1,5 +1,5 @@
 import pygame
-from WaveFuncCollapse import Rule, WFCollapse2D, Dir
+from WaveFuncCollapse import Rule, WFCollapse2D, Dir, SimpleWeightGen, BasicWeightGen, extractRulesAndRelativeFrequencies2D
 
 
 
@@ -22,8 +22,8 @@ def draw2D(grid, tile_colors, screen):
 	for y in range(grid.wid):
 		for x in range(grid.len):
 			#rect = pygame.Rect(x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID, tile_colors[grid.get_pos([x, y]).chosen_tile + 1])
-			color = tile_colors[grid.get_cell([x, y]).chosen_tile + 1]
-			rect = pygame.draw.rect(screen, color, [x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID], 0)
+			color = tile_colors[grid.get_cell([x, y]).chosen_tile + 2]
+			pygame.draw.rect(screen, color, [x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID], 0)
 
 if __name__ == '__main__':
 	# Set random seed for consistent results
@@ -31,7 +31,10 @@ if __name__ == '__main__':
 	# init game engine
 	pygame.init()
 
+
 	# Set up algo
+	dims = [35, 35]
+	con_dims = [3, 3]
 	# Set generation rules. 0, 1, 2 = Land, sea, coast
 	rules = [
 		Rule(0, 2, Dir.UP), Rule(0, 2, Dir.DOWN), Rule(0, 2, Dir.LEFT), Rule(0, 2, Dir.RIGHT),
@@ -40,10 +43,30 @@ if __name__ == '__main__':
 		Rule(1, 1, Dir.UP), Rule(1, 1, Dir.DOWN), Rule(1, 1, Dir.LEFT), Rule(1, 1, Dir.RIGHT),
 		Rule(2, 0, Dir.UP), Rule(2, 0, Dir.DOWN), Rule(2, 0, Dir.LEFT), Rule(2, 0, Dir.RIGHT),
 		Rule(2, 1, Dir.UP), Rule(2, 1, Dir.DOWN), Rule(2, 1, Dir.LEFT), Rule(2, 1, Dir.RIGHT),
-        Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
+		Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
 	]
 	# Create Wave-funciton collapse object
-	wf = WFCollapse2D([35, 35], 3, rules, weights=[5, 4, 5], prices={1: 2, 2: 4}, money=500)
+	wf = WFCollapse2D(dims, 3, rules, weight_genner=BasicWeightGen([5, 4, 5]), context_dims=con_dims)
+	while wf.step(): pass
+	# CREATE COPY
+	rules, frequencies, mapping = extractRulesAndRelativeFrequencies2D(wf._grid)
+	print("Num of rules: " + str(len(rules)))
+	test = WFCollapse2D(dims=dims, n_tiles=int(len(frequencies)/4), rules=rules, weight_genner=SimpleWeightGen(frequencies, con_dims), context_dims=con_dims)
+	toggle_orig = False
+
+	# transfer colors from original to copy
+	color_map = {0: GREEN, 1: BLUE, 2: SAND}
+	orig_colors = [(0, 0, 0), (100, 100, 100), color_map[0], color_map[1], color_map[2]]
+	test_colors = [(0, 0, 0) for x in range(int(len(frequencies)/4) + 2)]
+	test_colors[1] = (100, 100, 100)
+	keys = list(mapping.keys())
+	vals = list(mapping.values())
+	for value in vals:
+		i = vals.index(value)
+		orig_tile = keys[i]
+		if (orig_tile >= 0):
+			test_colors[orig_tile+2] = color_map[orig_tile]
+	print(test_colors)
 
 	# open a new window
 	screen = pygame.display.set_mode((500, 500))
@@ -60,17 +83,22 @@ if __name__ == '__main__':
 		for event in pygame.event.get(): # User did something
 			if event.type == pygame.QUIT: # If user clicked close
 				running = False # Flag that we are done so we can exit the while loop
+			elif event.type == pygame.MOUSEBUTTONDOWN:
+				toggle_orig = not toggle_orig
 	
 		# --- Game logic should go here
-		if not wf.step():
+		if not test.step():
 			pygame.time.delay(1000)
-			wf.reset()
+			test.reset()
 	
 		# --- Drawing code should go here
 		# First, clear the screen to white. 
 		screen.fill(WHITE)
-		#The you can draw different shapes and lines or add text to your background stage.
-		draw2D(wf._grid, [(100, 100, 100), GREEN, BLUE, SAND], screen)
+		# Then you can draw different shapes and lines or add text to your background stage.
+		if toggle_orig:
+			draw2D(wf._grid, orig_colors, screen)
+		else:
+			draw2D(test._grid, test_colors, screen)
 	
 	
 		# --- Go ahead and update the screen with what we've drawn.
