@@ -536,16 +536,7 @@ def extractRulesAndRelativeFrequencies2D(grid: Tuple2D):
 				result.add(Rule(seen_tiles[c_t], seen_tiles[c_t_w], Dir.RIGHT))
 				result.add(Rule(seen_tiles[c_t_w], seen_tiles[c_t], Dir.LEFT))
 
-	i = 0
-	for tf2 in tile_frequency:
-		print(str(int(i/4)) + ": " + str(tf2))
-		i += 1
 	tile_frequency = convert_freq_to_orig_form(tile_frequency, seen_tiles)
-	i = 0
-	print(seen_tiles)
-	for tf2 in tile_frequency:
-		print(str(int(i/4)) + ": " + str(tf2))
-		i += 1
 
 	# change rules based on mapping
 	results = convert_rules_to_orig_form(list(result), seen_tiles)
@@ -601,7 +592,7 @@ def convert_grid_to_orig_form(grid: Tuple2D, mapping):
 	for cell, _ in grid:
 		cell.chosen_tile = keys[vals.index(cell.chosen_tile)]
 
-# TODO: Make a weight genner that takes in some sample image and spits out how many times the other tiles appeared based on what tile was placed in a spot
+
 # TODO: Use my gpu to do entropy calculation somehow?
 # TODO: Make our ai powered result work with the 'Terminal' game
 if __name__ == '__main__': 

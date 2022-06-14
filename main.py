@@ -46,11 +46,10 @@ if __name__ == '__main__':
 		Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
 	]
 	# Create Wave-funciton collapse object
-	wf = WFCollapse2D(dims, 3, rules, weight_genner=BasicWeightGen([5, 4, 5]), context_dims=con_dims)
+	wf = WFCollapse2D(dims, 3, rules, weight_genner=BasicWeightGen([5, 3, 5]), context_dims=con_dims)
 	while wf.step(): pass
 	# CREATE COPY
 	rules, frequencies, mapping = extractRulesAndRelativeFrequencies2D(wf._grid)
-	print("Num of rules: " + str(len(rules)))
 	test = WFCollapse2D(dims=dims, n_tiles=int(len(frequencies)/4), rules=rules, weight_genner=SimpleWeightGen(frequencies, con_dims), context_dims=con_dims)
 	toggle_orig = False
 
@@ -66,7 +65,6 @@ if __name__ == '__main__':
 		orig_tile = keys[i]
 		if (orig_tile >= 0):
 			test_colors[orig_tile+2] = color_map[orig_tile]
-	print(test_colors)
 
 	# open a new window
 	screen = pygame.display.set_mode((500, 500))
