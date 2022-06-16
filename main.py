@@ -1,7 +1,9 @@
 import os
 import pygame
 from GenFromImg import img_to_tuple
-from WaveFuncCollapse import Rule, WFCollapse2D, Dir, SimpleWeightGen, BasicWeightGen, extractRulesAndRelativeFrequencies2D
+from WFCollapse2D import WFCollapse2D
+from GenFromImg import extractRulesAndRelativeFrequencies2D
+from SimpleWeightGen import SimpleWeightGen
 
 
 # Define some colors

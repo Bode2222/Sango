@@ -2,7 +2,7 @@
 
 import os
 import imageio as iio
-from Tuple import Tuple2D
+from Tuple2D import Tuple2D
 from Tuple import Cell
 from WFUtil import Rule, Dir
 
