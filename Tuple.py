@@ -27,6 +27,10 @@ class Tuple:
         pass
     def get_context(self, loc):
         pass
+    def loc_to_index(self, loc):
+        pass
+    def index_to_loc(self, index):
+        pass
 
 class Tuple2D(Tuple):
     # given number of tiles a cell can become, dimensions of grid, and dimensions of area around a cell to give as context

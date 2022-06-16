@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
 	# What image to use as the base image
 	cur_path = os.path.dirname(__file__)
-	path = os.path.join(cur_path, "samples\\TrickKnot.png")
+	path = os.path.join(cur_path, "samples\\Flowers.png")
 	img_grid, col_list = img_to_tuple(str(path))
 	print(col_list)
 	# Set generation rules. 0, 1, 2 = Land, sea, coast
@@ -61,7 +61,8 @@ if __name__ == '__main__':
 	# CREATE COPY
 	#rules, frequencies, _ = extractRulesAndRelativeFrequencies2D(wf._grid)
 	rules, frequencies, _ = extractRulesAndRelativeFrequencies2D(img_grid)
-	test = WFCollapse2D(dims=dims, n_tiles=int(len(frequencies)/4), rules=rules, weight_genner=SimpleWeightGen(frequencies, con_dims), context_dims=con_dims)
+	test = WFCollapse2D(dims=dims, tile_selection="LINEAR",n_tiles=int(len(frequencies)/4), rules=rules, 
+	weight_genner=SimpleWeightGen(frequencies, con_dims), context_dims=con_dims)
 	toggle_orig = False
 
 	# transfer colors from original to copy if copying from a genned grid
