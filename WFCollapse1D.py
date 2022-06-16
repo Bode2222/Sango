@@ -84,7 +84,16 @@ class WFCollapse1D(WaveFunctionCollapse):
 		self._set_weights(list(affected_cells))
 
 if __name__ == '__main__':
-	random.seed(123)
-	test1D = WFCollapse1D(dims=[5], n_tiles=1, rules=[Rule(0, 0, Dir.LEFT), Rule(0, 0, Dir.RIGHT)])
+	#random.seed(123)
+	rules = [
+		Rule(0, 2, Dir.UP), Rule(0, 2, Dir.DOWN), Rule(0, 2, Dir.LEFT), Rule(0, 2, Dir.RIGHT),
+		Rule(2, 0, Dir.UP), Rule(2, 0, Dir.DOWN), Rule(2, 0, Dir.LEFT), Rule(2, 0, Dir.RIGHT),
+		Rule(0, 0, Dir.UP), Rule(0, 0, Dir.DOWN), Rule(0, 0, Dir.LEFT), Rule(0, 0, Dir.RIGHT),
+		Rule(1, 2, Dir.UP), Rule(1, 2, Dir.DOWN), Rule(1, 2, Dir.LEFT), Rule(1, 2, Dir.RIGHT),
+		Rule(2, 1, Dir.UP), Rule(2, 1, Dir.DOWN), Rule(2, 1, Dir.LEFT), Rule(2, 1, Dir.RIGHT),
+		Rule(1, 1, Dir.UP), Rule(1, 1, Dir.DOWN), Rule(1, 1, Dir.LEFT), Rule(1, 1, Dir.RIGHT),
+		Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
+	]
+	test1D = WFCollapse1D(dims=[25], n_tiles=3, rules=rules)
 	while test1D.step(): pass
 	print(test1D._grid)
