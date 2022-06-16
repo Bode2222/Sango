@@ -10,7 +10,7 @@ from BasicWeightGen import BasicWeightGen
 # to change kind overwrite getTupleObject, propagate, _gen_adjacency matrix
 class WaveFunctionCollapse:
 	# inventory maps tile id to number of units available for use. if number of units is -1, that means infinite available
-	def __init__(self, dims, n_tiles, rules, tile_selection="RANDOM", weight_genner=None, inventory={-1: -1}, context_space= "LOCAL", context_dims=[3, 3], prices={-1: 0}, money=10):
+	def __init__(self, dims, n_tiles, rules=[], tile_selection="RANDOM", weight_genner=None, inventory={-1: -1}, context_space= "LOCAL", context_dims=[3, 3], prices={-1: 0}, money=10):
 		self._dims = dims
 		self._rules = rules
 		self._n_tiles = n_tiles

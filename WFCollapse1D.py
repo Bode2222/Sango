@@ -43,38 +43,39 @@ class WFCollapse1D(WaveFunctionCollapse):
 			if not self._price_change:
 				affected_cells.update(list(map(self._grid.loc_to_index, self._grid.get_cell_context_positions(pos))))
 
-			# Get the list of tiles allowed beside current tile: Go through my available tiles and 'or' their different directional adjaceny tiles.
-			east = west = []
-			if self._grid.get_cell(pos).chosen_tile != -1:
-				east = np.array(self._adj[self._grid.get_cell(pos).chosen_tile * self.NUM_DIRS + self.RIGHT])
-				west = np.array(self._adj[self._grid.get_cell(pos).chosen_tile * self.NUM_DIRS + self.LEFT])
-			else:
-				east = np.array([False for i in range(self._n_tiles)])
-				west = np.array([False for i in range(self._n_tiles)])
-				# If this cell is available to us, logical or its rules into our sum of available tiles for a given direction
-				for i in range(self._n_tiles):
-					if self._grid.get_cell(pos).tile_active[i]:
-						east = np.logical_or(east, self._adj[i * self.NUM_DIRS + self.RIGHT])
-						west = np.logical_or(west, self._adj[i * self.NUM_DIRS + self.LEFT])
-			
-			# Eliminate neighbor possibilities based on rules
-			for x in [1, -1]:
-					n_pos = [pos[0] + x]
-					if (n_pos[0] < 0 or n_pos[0] >= self._dims[0]):
-						continue
-					curCell = self._grid.get_cell(n_pos)
-					# Get adjacency rule based on chosen tile. If the permutation of tile active changes add it to the stack
-					# Go through every tile in the tile_active list and OR the result, then AND that with the corresponding neighbor
-					if (x == 1 and n_pos[0] < self._dims[0]):
-						east &= curCell.tile_active
-						if (curCell.chosen_tile == -1 and not np.allclose(east, curCell.tile_active)):
-							curCell.tile_active = list(east)
-							stack.append(n_pos)
-					elif (x == -1 and n_pos[0] >= 0):
-						west &= curCell.tile_active
-						if (curCell.chosen_tile == -1 and not np.allclose(west, curCell.tile_active)):
-							curCell.tile_active = list(west)
-							stack.append(n_pos)
+			if len(self._rules) > 0:
+				# Get the list of tiles allowed beside current tile: Go through my available tiles and 'or' their different directional adjaceny tiles.
+				east = west = []
+				if self._grid.get_cell(pos).chosen_tile != -1:
+					east = np.array(self._adj[self._grid.get_cell(pos).chosen_tile * self.NUM_DIRS + self.RIGHT])
+					west = np.array(self._adj[self._grid.get_cell(pos).chosen_tile * self.NUM_DIRS + self.LEFT])
+				else:
+					east = np.array([False for i in range(self._n_tiles)])
+					west = np.array([False for i in range(self._n_tiles)])
+					# If this cell is available to us, logical or its rules into our sum of available tiles for a given direction
+					for i in range(self._n_tiles):
+						if self._grid.get_cell(pos).tile_active[i]:
+							east = np.logical_or(east, self._adj[i * self.NUM_DIRS + self.RIGHT])
+							west = np.logical_or(west, self._adj[i * self.NUM_DIRS + self.LEFT])
+				
+				# Eliminate neighbor possibilities based on rules
+				for x in [1, -1]:
+						n_pos = [pos[0] + x]
+						if (n_pos[0] < 0 or n_pos[0] >= self._dims[0]):
+							continue
+						curCell = self._grid.get_cell(n_pos)
+						# Get adjacency rule based on chosen tile. If the permutation of tile active changes add it to the stack
+						# Go through every tile in the tile_active list and OR the result, then AND that with the corresponding neighbor
+						if (x == 1 and n_pos[0] < self._dims[0]):
+							east &= curCell.tile_active
+							if (curCell.chosen_tile == -1 and not np.allclose(east, curCell.tile_active)):
+								curCell.tile_active = list(east)
+								stack.append(n_pos)
+						elif (x == -1 and n_pos[0] >= 0):
+							west &= curCell.tile_active
+							if (curCell.chosen_tile == -1 and not np.allclose(west, curCell.tile_active)):
+								curCell.tile_active = list(west)
+								stack.append(n_pos)
 		
 		# if the price crossed a tile price update entire board
 		if self._price_change:
