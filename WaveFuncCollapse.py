@@ -213,7 +213,7 @@ class WaveFunctionCollapse:
 		# Set chosen tile to cell value
 		self._grid.get_cell(loc).chosen_tile = chosen_tile
 		# Set cell entropy to infinite
-		self._weight_entropy[loc[0] * self._grid.wid + loc[1]][1] = float('inf')
+		self._weight_entropy[self._grid.loc_to_index(loc)][1] = float('inf')
 		# Remove tile from inventory
 		if self._inv[chosen_tile] > 0:
 			self._inv[chosen_tile] -= 1

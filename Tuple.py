@@ -27,7 +27,7 @@ class Tuple:
     # Returns both cell and context of given location
     def get_cell_context(self, loc):
         pass
-     # Get list of context cell locations given a location
+    # Get list of context cell locations given a location
     def get_cell_context_positions(self, loc):
         pass
     def loc_to_index(self, loc):
