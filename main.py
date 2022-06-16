@@ -4,7 +4,6 @@ from GenFromImg import img_to_tuple
 from WaveFuncCollapse import Rule, WFCollapse2D, Dir, SimpleWeightGen, BasicWeightGen, extractRulesAndRelativeFrequencies2D
 
 
-
 # Define some colors
 BLACK = ( 0, 0, 0)
 WHITE = ( 255, 255, 255)
@@ -30,53 +29,26 @@ def draw2D(grid, tile_colors, screen):
 
 
 if __name__ == '__main__':
-	# Set random seed for consistent results
-	#random.seed(a=1235)
 	# init game engine
 	pygame.init()
 
-
-	# Set up algo
+	# Set up algo hyperparams
 	dims = [35, 35]
 	con_dims = [3, 3]
 
 	# What image to use as the base image
 	cur_path = os.path.dirname(__file__)
 	path = os.path.join(cur_path, "samples\\Flowers.png")
+	# Change image to tuple
 	img_grid, col_list = img_to_tuple(str(path))
-	print(col_list)
-	# Set generation rules. 0, 1, 2 = Land, sea, coast
-	rules = [
-		Rule(0, 2, Dir.UP), Rule(0, 2, Dir.DOWN), Rule(0, 2, Dir.LEFT), Rule(0, 2, Dir.RIGHT),
-		Rule(0, 0, Dir.UP), Rule(0, 0, Dir.DOWN), Rule(0, 0, Dir.LEFT), Rule(0, 0, Dir.RIGHT),
-		Rule(1, 2, Dir.UP), Rule(1, 2, Dir.DOWN), Rule(1, 2, Dir.LEFT), Rule(1, 2, Dir.RIGHT),
-		Rule(1, 1, Dir.UP), Rule(1, 1, Dir.DOWN), Rule(1, 1, Dir.LEFT), Rule(1, 1, Dir.RIGHT),
-		Rule(2, 0, Dir.UP), Rule(2, 0, Dir.DOWN), Rule(2, 0, Dir.LEFT), Rule(2, 0, Dir.RIGHT),
-		Rule(2, 1, Dir.UP), Rule(2, 1, Dir.DOWN), Rule(2, 1, Dir.LEFT), Rule(2, 1, Dir.RIGHT),
-		Rule(2, 2, Dir.UP), Rule(2, 2, Dir.DOWN), Rule(2, 2, Dir.LEFT), Rule(2, 2, Dir.RIGHT)
-	]
-	# Create Wave-funciton collapse object
-	wf = WFCollapse2D(dims, 3, rules, weight_genner=BasicWeightGen([5, 3, 5]), context_dims=con_dims)
-	while wf.step(): pass
-	# CREATE COPY
-	#rules, frequencies, _ = extractRulesAndRelativeFrequencies2D(wf._grid)
+	# extract rules, frequencies and mapping from img tuple
 	rules, frequencies, _ = extractRulesAndRelativeFrequencies2D(img_grid)
+	# Set up wf collapse algo around those rules and frequencies
 	test = WFCollapse2D(dims=dims, tile_selection="LINEAR",n_tiles=int(len(frequencies)/4), rules=rules, 
-	weight_genner=SimpleWeightGen(frequencies, con_dims), context_dims=con_dims)
-	toggle_orig = False
+		weight_genner=SimpleWeightGen(frequencies, con_dims), context_dims=con_dims)
 
-	# transfer colors from original to copy if copying from a genned grid
-	"""color_map = {0: GREEN, 1: BLUE, 2: SAND}
-	orig_colors = base_colors + [color_map[0], color_map[1], color_map[2]]
-	test_colors = [(0, 0, 0) for x in range(int(len(frequencies)/4) + 2)]
-	test_colors[1] = (100, 100, 100)
-	keys = list(mapping.keys())
-	vals = list(mapping.values())
-	for value in vals:
-		i = vals.index(value)
-		orig_tile = keys[i]
-		if (orig_tile >= 0):
-			test_colors[orig_tile+2] = color_map[orig_tile]"""
+	# Used to know whether original image should be displayed to screen
+	toggle_orig = False
 
 	# open a new window
 	screen = pygame.display.set_mode((750, 500))
