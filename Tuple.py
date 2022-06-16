@@ -4,9 +4,9 @@ from difflib import context_diff
 
 
 class Cell:
-    def __init__(self, n_tiles):
+    def __init__(self, n_tiles, chosen_tile=-1):
         self.tile_active = [True for i in range(n_tiles)]
-        self.chosen_tile = -1
+        self.chosen_tile = chosen_tile
     
     def __str__(self):
         return "%02d" % self.chosen_tile

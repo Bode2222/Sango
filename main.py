@@ -1,4 +1,6 @@
+import os
 import pygame
+from GenFromImg import img_to_tuple
 from WaveFuncCollapse import Rule, WFCollapse2D, Dir, SimpleWeightGen, BasicWeightGen, extractRulesAndRelativeFrequencies2D
 
 
@@ -11,11 +13,12 @@ RED = ( 255, 0, 0)
 BLUE = (0, 0, 255)
 BROWN = (165, 42, 42)
 SAND = (194, 178, 128)
+base_colors = [(0, 0, 0), (50, 50, 50)]
 
 # Takes in the grid and a list of colors the same length as the number of unique tiles in the grid. prepend the color for an unsolved tile into the tiled_colors list
 def draw2D(grid, tile_colors, screen):
 	# Define constants
-	CELL_WID = int(.95 * screen.get_height() / grid.wid)
+	CELL_WID = int(.8 * screen.get_height() / grid.wid)
 	CUSHION = int(.05 * screen.get_width() / grid.wid)
 
 	# Draw rects that represent the grid
@@ -24,6 +27,7 @@ def draw2D(grid, tile_colors, screen):
 			#rect = pygame.Rect(x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID, tile_colors[grid.get_pos([x, y]).chosen_tile + 1])
 			color = tile_colors[grid.get_cell([x, y]).chosen_tile + 2]
 			pygame.draw.rect(screen, color, [x * (CELL_WID + CUSHION), y * (CELL_WID + CUSHION), CELL_WID, CELL_WID], 0)
+
 
 if __name__ == '__main__':
 	# Set random seed for consistent results
@@ -35,6 +39,12 @@ if __name__ == '__main__':
 	# Set up algo
 	dims = [35, 35]
 	con_dims = [3, 3]
+
+	# What image to use as the base image
+	cur_path = os.path.dirname(__file__)
+	path = os.path.join(cur_path, "samples\\TrickKnot.png")
+	img_grid, col_list = img_to_tuple(str(path))
+	print(col_list)
 	# Set generation rules. 0, 1, 2 = Land, sea, coast
 	rules = [
 		Rule(0, 2, Dir.UP), Rule(0, 2, Dir.DOWN), Rule(0, 2, Dir.LEFT), Rule(0, 2, Dir.RIGHT),
@@ -49,13 +59,14 @@ if __name__ == '__main__':
 	wf = WFCollapse2D(dims, 3, rules, weight_genner=BasicWeightGen([5, 3, 5]), context_dims=con_dims)
 	while wf.step(): pass
 	# CREATE COPY
-	rules, frequencies, mapping = extractRulesAndRelativeFrequencies2D(wf._grid)
+	#rules, frequencies, _ = extractRulesAndRelativeFrequencies2D(wf._grid)
+	rules, frequencies, _ = extractRulesAndRelativeFrequencies2D(img_grid)
 	test = WFCollapse2D(dims=dims, n_tiles=int(len(frequencies)/4), rules=rules, weight_genner=SimpleWeightGen(frequencies, con_dims), context_dims=con_dims)
 	toggle_orig = False
 
-	# transfer colors from original to copy
-	color_map = {0: GREEN, 1: BLUE, 2: SAND}
-	orig_colors = [(0, 0, 0), (100, 100, 100), color_map[0], color_map[1], color_map[2]]
+	# transfer colors from original to copy if copying from a genned grid
+	"""color_map = {0: GREEN, 1: BLUE, 2: SAND}
+	orig_colors = base_colors + [color_map[0], color_map[1], color_map[2]]
 	test_colors = [(0, 0, 0) for x in range(int(len(frequencies)/4) + 2)]
 	test_colors[1] = (100, 100, 100)
 	keys = list(mapping.keys())
@@ -64,10 +75,10 @@ if __name__ == '__main__':
 		i = vals.index(value)
 		orig_tile = keys[i]
 		if (orig_tile >= 0):
-			test_colors[orig_tile+2] = color_map[orig_tile]
+			test_colors[orig_tile+2] = color_map[orig_tile]"""
 
 	# open a new window
-	screen = pygame.display.set_mode((500, 500))
+	screen = pygame.display.set_mode((750, 500))
 	pygame.display.set_caption("Wave Function Collapse")
 
 	# Game loop run while 'running' is true
@@ -94,9 +105,9 @@ if __name__ == '__main__':
 		screen.fill(WHITE)
 		# Then you can draw different shapes and lines or add text to your background stage.
 		if toggle_orig:
-			draw2D(wf._grid, orig_colors, screen)
+			draw2D(img_grid, base_colors + col_list, screen)
 		else:
-			draw2D(test._grid, test_colors, screen)
+			draw2D(test._grid, base_colors + col_list, screen)
 	
 	
 		# --- Go ahead and update the screen with what we've drawn.
