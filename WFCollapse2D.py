@@ -2,13 +2,13 @@ import random
 import numpy as np
 from Tuple2D import Tuple2D
 from WFUtil import Rule, Dir
-from WaveFuncCollapse import WaveFunctionCollapse
+from WFCollapseEnv import WFCollapseEnv
 from BasicWeightGen import BasicWeightGen
 from SimpleWeightGen import SimpleWeightGen
 from GenFromImg import extractRulesAndRelativeFrequencies2D
 
 # 2D impl of WF Collapse interface
-class WFCollapse2D(WaveFunctionCollapse):
+class WFCollapse2D(WFCollapseEnv):
 	NUM_DIRS = 4
 	UP = 0
 	RIGHT = 1

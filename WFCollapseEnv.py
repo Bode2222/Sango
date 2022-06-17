@@ -34,14 +34,14 @@ class WFCollapseEnv(WaveFunctionCollapse):
         loc = self._get_lowest_entropy()
         return State(self._grid.get_cell_context(loc), loc)
 
-    # step now takes in an 'action' which is the tile id chosen to be in that space
-    def step(self, action: Action):
+    # special step func takes in an 'action' which is the tile id chosen to be in that space
+    def env_step(self, action: Action):
         loc, chosen_tile = action.get()
         self.place(loc, chosen_tile)
-        self._propagate()
+        status = self._propagate()
         # Return next state and reward
         n_loc = self._get_lowest_entropy()
-        return [State(self._grid.get_cell_context(n_loc), n_loc), self.reward()]
+        return [State(self._grid.get_cell_context(n_loc), n_loc), self.reward(), status]
 
     # define reward function here
     def reward(self):

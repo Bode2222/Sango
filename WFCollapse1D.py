@@ -2,13 +2,13 @@ from unittest import result
 import numpy as np
 from Tuple1D import Tuple1D
 from WFUtil import Dir
-from WaveFuncCollapse import WaveFunctionCollapse
+from WFCollapseEnv import WFCollapseEnv
 # for testing
 import random
 from WFUtil import Rule
 
 # 2D impl of WF Collapse interface
-class WFCollapse1D(WaveFunctionCollapse):
+class WFCollapse1D(WFCollapseEnv):
 	NUM_DIRS = 2
 	RIGHT = 0
 	LEFT = 1
