@@ -66,6 +66,20 @@ class Tuple1D(Tuple):
                 result.append([pos[0]])
         return result
 
+# Modified version of tuple1d whose context is not the cells around it, but the cells behind it
+class Tuple1DBackwards(Tuple1D):
+    # Get list of context cell positions given a location
+    def _generate_context_pos(self, loc):
+        result = []
+
+        for ii in range(self.con_dims[0]):
+            # Get offsets from 'loc' by subtracting the context dimension from that position
+            pos = [loc[0] - ii]
+
+            # if its in range replace it with the appropriate cell, else ignore it
+            if (pos[0] >= 0 and pos[0] < self.len):
+                result.append([pos[0]])
+        return result
 
 if __name__=='__main__':
     test1D = Tuple1D(1, [5])

@@ -59,11 +59,6 @@ class Tuple2D(Tuple):
             return self._con_list[self.loc_to_index(loc)]
         elif self._strat == "GLOBAL":
             return self._global_list
-        
-
-    # Get list of context cells given a location
-    def get_cell_context_cells(self, loc):
-        return list(map(self.get_cell, self.get_cell_context_positions(loc)))
 
     # Set a location on the grid to a val
     def set_pos(self, loc, val):
@@ -76,10 +71,11 @@ class Tuple2D(Tuple):
         else:
             return Cell.Null()
 
-    # Returns both cell and context of given location
+    # Returns both cell and context of given location.
+    # The get cell context that matters
     def get_cell_context(self, loc):
         if (loc[0] >= 0 and loc[1] >= 0 and loc[0] < self.len and loc[1] < self.wid):
-            return [self.grid[loc[0]][loc[1]], self.get_cell_context_cells(loc)]
+            return [self.grid[loc[0]][loc[1]], list(map(self.get_cell, self.get_cell_context_positions(loc)))]
         else:
             return [Cell.Null(), []]
 

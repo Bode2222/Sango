@@ -65,8 +65,7 @@ class WaveFunctionCollapse:
 		# Set cell entropy to infinite
 		self._weight_entropy[self._grid.loc_to_index(loc)][1] = float('inf')
 		# Remove tile from inventory?
-		"""if chosen_tile > 0 and self._inv[chosen_tile] > 0:
-			self._inv[chosen_tile] -= 1"""
+		self._update_other_constraints(chosen_tile)
 		self._propagate(loc)
 
 	def step(self):
@@ -103,6 +102,26 @@ class WaveFunctionCollapse:
 
 		# update ready to buy list
 		self._ready_to_buy = np.array([False if price > self._bank else True for price in self._prices])
+
+	# this func handles updating inventory and self._bank and any other future constraints
+	def _update_other_constraints(self, chosen_tile):
+		# Remove tile from inventory
+		if self._inv[chosen_tile] > 0:
+			self._inv[chosen_tile] -= 1
+		# Subtract price from bank
+		self._bank -= self._prices[chosen_tile]
+		# Check if bank crossed tile price. if it did, update entire grid and set the new price tracker
+		if self._price_tracker >= 0:
+			if self._bank < self._sorted_prices[self._price_tracker]:
+				self._price_change = True
+				self._set_price_tracker()
+			elif self._price_tracker < self._n_tiles - 1 and self._bank >= self._sorted_prices[self._price_tracker + 1]:
+				self._price_change = True
+				self._set_price_tracker()
+		else:
+			if self._bank >= self._sorted_prices[0]:
+				self._price_change = True
+				self._set_price_tracker()
 
 	# Calculate all the weight, entropy pairs for all the cells in a list of cell indexes
 	# shannon_entropy_for_square = log(sum(weight)) - (sum(weight * log(weight)) / sum(weight))
@@ -205,24 +224,8 @@ class WaveFunctionCollapse:
 		self._grid.get_cell(loc).chosen_tile = chosen_tile
 		# Set cell entropy to infinite
 		self._weight_entropy[self._grid.loc_to_index(loc)][1] = float('inf')
-		# Remove tile from inventory
-		if self._inv[chosen_tile] > 0:
-			self._inv[chosen_tile] -= 1
-		# Subtract price from bank
-		self._bank -= self._prices[chosen_tile]
-		# Check if bank crossed tile price. if it did, update entire grid and set the new price tracker
-		if self._price_tracker >= 0:
-			if self._bank < self._sorted_prices[self._price_tracker]:
-				self._price_change = True
-				self._set_price_tracker()
-			elif self._price_tracker < self._n_tiles - 1 and self._bank >= self._sorted_prices[self._price_tracker + 1]:
-				self._price_change = True
-				self._set_price_tracker()
-		else:
-			if self._bank >= self._sorted_prices[0]:
-				self._price_change = True
-				self._set_price_tracker()
-
+		# update inventory and bank
+		self._update_other_constraints(chosen_tile)
 		return chosen_tile
 		
 	# Generate weights given context
