@@ -7,7 +7,7 @@ from BasicWeightGen import BasicWeightGen
 
 
 # WF Collapse interface
-# to change kind overwrite getTupleObject, propagate, _gen_adjacency matrix
+# to change kind overwrite getTupleObject, _update_neighbors, and _gen_adjacency matrix
 class WaveFunctionCollapse:
 	# inventory maps tile id to number of units available for use. if number of units is -1, that means infinite available
 	def __init__(self, dims, n_tiles, rules=[], tile_selection="RANDOM", weight_genner=None, inventory={-1: -1}, context_space= "LOCAL", context_dims=[3, 3], prices={-1: 0}, money=10):
@@ -72,12 +72,11 @@ class WaveFunctionCollapse:
 	def step(self):
 		# Get the location of the cell with the lowest entropy
 		loc = self._get_lowest_entropy()
-		if (loc[0] == -1): return 0
 		# Choose a tile for that cell
 		self._collapse(loc)
 		# Change what tiles are available for the cell around that tile based on the tile chosen
-		self._propagate(loc)
-		return 1
+		status = self._propagate(loc)
+		return status
 
 	# Reset entire grid to pre changed form
 	def reset(self):
@@ -181,14 +180,6 @@ class WaveFunctionCollapse:
 	
 	# selects the cell with the lowest entropy
 	def _get_lowest_entropy(self):
-		# If we couldnt calcuate the entropy of a single cell then all the cells have chosen tiles and the program is over
-		if self._min_entropy == float('inf'):
-			return [-1]
-		
-		# chosen cell is randomly selected from list of cells at the minimum entropy and removed from list
-		if len(self._min_ent_list) == 0:
-			print(self._min_entropy)
-		
 		min_loc = []
 		if self._tile_sel == "LINEAR":
 			min_loc = self._min_ent_list.pop(0)
@@ -238,8 +229,43 @@ class WaveFunctionCollapse:
 	def _gen_weights(self, context, pos):
 		return self._weight_genner.gen_weights(context, pos)
 
-	# the cell at location loc has been changed, How does that affect the cells around that one?
+	# the cell at location loc has been changed, How does that affect the cells around that one and the cells around those?
+	# after propagating, keep a list of all the cells that changed and update their weights based on their contexts
 	def _propagate(self, loc):
+		# set of cells who were affected by propagation, i.e set of cells whose contexts were changed and update their weights and entropies
+		affected_cells = set()
+		# Add current cell to the stack
+		stack = [loc]
+		# While the stack is not empty
+		while stack:
+			# pop the stack
+			pos = stack.pop()
+			# If this cell has no tiles to choose from just ignore it
+			if np.count_nonzero(self._grid.get_cell(pos).tile_active) == 0 or self._grid.get_cell(pos).chosen_tile == -2:
+				continue
+
+			# add the context of this tile into the affected cells pile
+			if not self._price_change:
+				affected_cells.update(list(map(self._grid.loc_to_index, self._grid.get_cell_context_positions(pos))))
+
+			if len(self._rules) > 0:
+				stack.extend(self._update_neighbors(pos))
+			
+		# if the price crossed a tile price update entire board
+		if self._price_change:
+			affected_cells = [x for x in range(len(self._grid))]
+			self._price_change = False
+		# change cell indexes back to locations, make them into a list then recalculate every affected cell
+		self._set_weights(list(affected_cells))
+
+		# If we couldnt calcuate the entropy of a single cell then all the cells have chosen tiles and the program is over
+		if self._min_entropy == float('inf'):
+			return 0
+		return 1
+	
+
+	# update the tiles of a cells direct neighbor
+	def _update_neighbors(self, pos):
 		pass
 
 	# What kind of tensor are we dealing with in this wavefront collapse? 1d, 2d or 3d?
