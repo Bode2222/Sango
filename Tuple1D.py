@@ -14,10 +14,12 @@ class Tuple1D(Tuple):
         self.grid[loc[0]] = cell
 
     def get_cell(self, loc) -> Cell:
-        return self.grid[loc[0]]
+        if (loc[0] >= 0 and loc [0] < self.len):
+            return self.grid[loc[0]]
+        return Cell.Null()
 
     def get_cell_context(self, loc):
-        return [self.grid[loc[0]], [self.grid[x[0]] for x in self.get_cell_context_positions(loc)]]
+        return [self.grid[loc[0]], list(map(self.get_cell, [x for x in self.get_cell_context_positions(loc)]))]
 
     # Get list of context cell locations given a location
     def get_cell_context_positions(self, loc):
@@ -61,9 +63,7 @@ class Tuple1D(Tuple):
             x = ii - int(self.con_dims[0]/2)
             pos = [loc[0] + x]
 
-            # if its in range replace it with the appropriate cell, else ignore it
-            if (pos[0] >= 0 and pos[0] < self.len):
-                result.append([pos[0]])
+            result.append([pos[0]])
         return result
 
 # Modified version of tuple1d whose context is not the cells around it, but the cells behind it
@@ -76,9 +76,7 @@ class Tuple1DBackwards(Tuple1D):
             # Get offsets from 'loc' by subtracting the context dimension from that position
             pos = [loc[0] - ii]
 
-            # if its in range replace it with the appropriate cell, else ignore it
-            if (pos[0] >= 0 and pos[0] < self.len):
-                result.append([pos[0]])
+            result = [[pos[0]]] + result
         return result
 
 if __name__=='__main__':

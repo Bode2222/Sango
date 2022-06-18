@@ -1,9 +1,3 @@
-class State:
-    pass
-
-class Action:
-    pass
-
 class Env:
     # Returns a state, reward, status list
     def step(self):

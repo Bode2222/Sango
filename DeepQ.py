@@ -1,9 +1,8 @@
 # Algorith inspired by DeepLizard Deep q series on youtube video 14 timestep 5:48
-from curses import curs_set
 import random
 import numpy as np
-import tensorflow as tf
-from Env import EnvAdapter
+#import tensorflow as tf
+from Env import EnvDeepQAdapter
 from WFCollapseEnv import Action
 
 
@@ -36,7 +35,9 @@ class DeepQ:
 
 	# stores a replay in replay mem
 	def _insert_replay(self, replay):
-		pass
+		self._replay_mem.append(replay)
+		while len(self._replay_mem) > self._replay_mem_size:
+			self._replay_mem.pop(0)
 
 	# Reduces the exploration/exploitation threshold
 	def _decay_epsilon(self):
@@ -51,7 +52,7 @@ class DeepQ:
 		pass
 
 	# Train the network
-	def train(self, n_epi: int, env: EnvAdapter, steps_per_save=500, policy_net_save_file="", reward_save_file=""):
+	def train(self, n_epi: int, env: EnvDeepQAdapter, steps_per_save=500, policy_net_save_file="", reward_save_file=""):
 		# init a var to count the number of steps taken so far
 		total_steps = 0
 
@@ -83,7 +84,7 @@ class DeepQ:
 					# actions have weights determined by the network
 					pass
 				# make the chosen action an action object
-				action = env._make_action(state, action_weights)
+				action = env.make_action(state, action_weights)
 
 				# execute action in environment (env.step(action)). Store state, reward, running tuple
 				n_state, reward, running = env.step(action)
@@ -99,7 +100,7 @@ class DeepQ:
 
 				# Sample random batch from replay mem
 				batch = random.sample(self._replay_mem, min(len(self._replay_mem), self._batch_size))
-				cur_states, actions, rewards, n_states = []
+				cur_states = []; actions = []; rewards = []; n_states = []
 				for replay in batch:
 					cur_states.append(replay[0])
 					actions.append(replay[1])
@@ -110,12 +111,13 @@ class DeepQ:
 				cur_states = list(map(env.process_state, cur_states))
 				n_states = list(map(env.process_state, n_states))
 
-				# pass the batch of states into policy nets and target nets
-				cur_states = tf.data.Dataset.from_tensor_slices(cur_states)
-				n_states = tf.data.Dataset.from_tensor_slices(n_states)
 
-				for el in cur_states:
-					print(el.numpy())
+				# pass the batch of states into policy nets and target nets
+				#cur_states = tf.data.Dataset.from_tensor_slices(cur_states)
+				#n_states = tf.data.Dataset.from_tensor_slices(n_states)
+
+				#for el in cur_states:
+				#	print(el.numpy())
 
 				# Calculate loss btw output (ouptput policy net) and target (reward + output of target net)
 

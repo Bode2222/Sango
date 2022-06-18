@@ -48,9 +48,7 @@ class Tuple2D(Tuple):
                 x = ii - int(self.con_dims[0]/2)
                 pos = [loc[0] + x, loc[1] + y]
 
-                # if its in range replace it with the appropriate cell, else ignore it
-                if (pos[0] >= 0 and pos[1] >= 0 and pos[0] < self.len and pos[1] < self.wid):
-                    result.append([pos[0], pos[1]])
+                result.append([pos[0], pos[1]])
         return result
 
     # Get list of context cell locations given a location

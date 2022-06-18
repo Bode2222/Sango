@@ -133,6 +133,9 @@ class WaveFunctionCollapse:
 		for i in range(len(loc)):
 			pos = self._grid.index_to_loc(loc[i])
 			index = loc[i]
+			# check to ensure the location we're trying to update isnt out of bounds
+			if (index >= len(self._grid) or index < 0):
+				continue
 			# store the newly calculated weights and entropy
 			weights, entropy = self._calc_weight_entropy(pos)
 			self._weight_entropy[index][0] = weights
@@ -248,6 +251,7 @@ class WaveFunctionCollapse:
 				continue
 
 			# add the context of this tile into the affected cells pile
+			# only do this if these cells havent chosen tiles right? like -2. 1, 2,
 			if not self._price_change:
 				affected_cells.update(list(map(self._grid.loc_to_index, self._grid.get_cell_context_positions(pos))))
 
