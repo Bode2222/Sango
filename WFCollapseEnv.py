@@ -1,10 +1,9 @@
-from cgi import test
-from Tuple1D import Tuple, Tuple1D
+from EnvUtil import State, Action
 from WaveFuncCollapse import WaveFunctionCollapse
 
 
 # State object holds a context and a current location
-class State:
+class WFState(State):
     def __init__(self, tuple, loc) -> None:
         self._tuple = tuple
         self._loc = loc
@@ -13,7 +12,7 @@ class State:
         return [self._tuple, self._loc]
 
 # an action object holds a location and a chosen tile
-class Action:
+class WFAction(Action):
     def __init__(self, loc, chosen_tile) -> None:
         self._loc = loc
         self._chosen = chosen_tile
@@ -32,16 +31,16 @@ class WFCollapseEnv(WaveFunctionCollapse):
     def reset(self):
         super().reset()
         loc = self._get_lowest_entropy()
-        return State(self._grid.get_cell_context(loc), loc)
+        return WFState(self._grid.get_cell_context(loc), loc)
 
     # special step func takes in an 'action' which is the tile id chosen to be in that space
-    def env_step(self, action: Action):
+    def env_step(self, action: WFAction):
         chosen_tile, loc = action.get()
         self.place(loc, chosen_tile)
         status = self._propagate(loc)
         # Return next state and reward
         n_loc = self._get_lowest_entropy()
-        return [State(self._grid.get_cell_context(n_loc), n_loc), status]
+        return [WFState(self._grid.get_cell_context(n_loc), n_loc), status]
 
 if __name__ == '__main__':
     print("WF Env program finished")
