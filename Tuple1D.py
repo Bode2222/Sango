@@ -7,7 +7,7 @@ class Tuple1D(Tuple):
         self.grid = [Cell(n_tiles) for ii in range(self.len)]
         self.con_dims = context_dims
 
-        self._con_list = self._generate_contexts()
+        self._con_pos_list = self._generate_contexts()
         self._global_list = [[x] for x in range(self.len)]
 
     def set_pos(self, loc, cell: Cell):
@@ -22,7 +22,7 @@ class Tuple1D(Tuple):
     # Get list of context cell locations given a location
     def get_cell_context_positions(self, loc):
         if self._strat == "LOCAL":
-            return self._con_list[self.loc_to_index(loc)]
+            return self._con_pos_list[self.loc_to_index(loc)]
         elif self._strat == "GLOBAL":
             return self._global_list
 
@@ -34,7 +34,7 @@ class Tuple1D(Tuple):
 
     # return each cell and the cells that surrond it  within the dimensions 'self._con_dims'
     def __iter__(self):
-        half = int(self.con_dims/2)
+        half = int(self.con_dims[0]/2)
         for i in range(self.len):
             yield [self.grid[i], self.grid[i - half : i + half]]
 
