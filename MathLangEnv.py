@@ -19,25 +19,25 @@ class MathLangState(WFState):
 # given equation also represented as tiles. a list of tiles will be referred to as a program
 class MathLangEnv(Env):
 	# Max board len
-	LEN = 5
+	LEN = 1
 	# context length
-	CONTEXT_LEN = 3
+	CONTEXT_LEN = 1
 	# How many random samples to pick when comparing 2 programs
-	NUM_SAMPLES = 10
+	NUM_SAMPLES = 5
 	# What portion of the graph to sample (the combined math functions form a graph of input to output)
 	MIN_CAP = -3
 	MAX_CAP = 3
 	NUM_TILES = 3
 	# To change tiles increase num_tiles above, edit cost in init, and add what the tile represents in compile
 	# 2 tiles are:
-	# 0: + 3, cost: 1
+	# 0: + 0, cost: 0
 	# 1: - 2, cost: 1
-	# 2: + 0, cost: 0
+	# 2: + 3, cost: 1
 	def __init__(self) -> None:
 		self.game = WFCollapse1DBackContext([self.LEN], self.NUM_TILES, context_dims=[self.CONTEXT_LEN])
 		self.prompt = self._gen_prompt()
 		# How much each tile costs to have in your output
-		self._costs = [1, 1, 0]
+		self._costs = [0, 1, 1]
 
 	# At every step do a wf collapse step then combine with the unoptimized prompt program to get a mathlang state
 	# In production the NeuralNet weightgen will have a way to set the prompt so the wfcollapse only has to give the context
@@ -92,11 +92,11 @@ class MathLangEnv(Env):
 
 		for t in program:
 			if t == 0:
-				result += 3
+				result += 0
 			elif t == 1:
 				result -= 2
 			elif t == 2:
-				continue
+				result += 3
 
 		return result
 
@@ -131,9 +131,10 @@ class MathLangDeepQEnvAdapter(MathLangEnv, EnvDeepQAdapter):
 	# Process a given state into a list of values
 	def process_state(self, state):
 		prompt, context, _ = state.get()
-
 		con_list = [cell.chosen_tile for cell in context]
-		return prompt + con_list
+		out = prompt + con_list
+		out = [x/self.NUM_TILES for x in prompt]
+		return out
 
 if __name__ == '__main__':
 	env = MathLangEnv()

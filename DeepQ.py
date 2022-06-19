@@ -15,7 +15,7 @@ class DeepQ:
 	# replay mem size 10k
 	# lr = 0.001
 	# num_eps = 1k
-	def __init__(self, policy_net, steps_per_episode=-1, batch_size=256, replay_mem_size=10000, policy_clone_period=50):
+	def __init__(self, policy_net, steps_per_episode=-1, batch_size=256, replay_mem_size=10000, policy_clone_period=50, epsilon_decay=.0003):
 		# Set up replay memory capacity
 		self._replay_mem = []
 		self._replay_mem_size = replay_mem_size
@@ -24,11 +24,14 @@ class DeepQ:
 		self._policy_net = policy_net
 
 		# other net init stuff
-		self._loss_fn = tf.keras.losses.MeanSquaredError()
-		self._policy_net.compile(optimizer='adam', loss=self._loss_fn, metrics=['accuracy'])
+		loss_fn = tf.keras.losses.MeanSquaredError()
+		opt = tf.keras.optimizers.Adam(learning_rate=0.01)
+		self._policy_net.compile(optimizer=opt, loss=loss_fn)
 
 		# Clone policy net into target net
-		self._target_net = self._clone_policy()
+		self._target_net = tf.keras.models.clone_model(self._policy_net)
+		self._target_net.compile(optimizer=opt, loss=loss_fn)
+		self._target_net.set_weights(self._policy_net.get_weights())
 
 		# init steps per episode
 		self._steps_per_episode = steps_per_episode
@@ -39,7 +42,7 @@ class DeepQ:
 		self._epsilon_thresh = 0
 		self._ep_start = 1
 		self._ep_end = 0.01
-		self._ep_decay = 0.0003
+		self._ep_decay = epsilon_decay
 
 		# init the number of replay memories we will be learning in each step of the game
 		self._batch_size = batch_size
@@ -64,14 +67,22 @@ class DeepQ:
 
 	# copy policy network into target net
 	def _clone_policy(self):
-		self._target_net = tf.keras.models.clone_model(self._policy_net)
-		self._target_net.compile(optimizer='adam', loss=self._loss_fn, metrics=['accuracy'])
 		self._target_net.set_weights(self._policy_net.get_weights())
 		return self._target_net
 
 
 	# Train the network
 	def train(self, n_epi: int, env: EnvDeepQAdapter, steps_per_save=500, policy_net_save_file="", reward_save_file="", moving_reward_save_file=""):
+		if reward_save_file != "":
+			reward_file = open(reward_save_file, "r+")
+			reward_file.truncate(0)
+			reward_file.close()
+
+		if moving_reward_save_file != "":
+			mov_rew_file = open(moving_reward_save_file, "r+")
+			mov_rew_file.truncate(0)
+			mov_rew_file.close()
+		
 		# init a var to count the number of steps taken so far
 		total_steps = 0
 
