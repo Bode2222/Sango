@@ -21,6 +21,9 @@ class WFAction(Action):
     def get(self):
         return [self._chosen, self._loc]
 
+    def get_index(self):
+        return self._chosen
+
 # wf collapse algo, but reimagined as an environment for reinforcemnet learning
 # None of these are specific to 1 dimension or a specific game. this should be an abstract class other classes can inherit from
 class WFCollapseEnv(WaveFunctionCollapse):
