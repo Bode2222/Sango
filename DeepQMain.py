@@ -43,10 +43,13 @@ if __name__ == '__main__':
     # ep decay = 0.0007
     trainer = DeepQ(model, learning_rate=0.05, policy_clone_period=100, epsilon_decay=0.05, batch_size=32)
     #start_time = time.time()
-    trainer.train(500, env, steps_per_save=2500, policy_net_save_file=str(net_path), 
-                   reward_save_file=str(rew_path), moving_reward_save_file=str(mov_path))
+    #trainer.train(500, env, steps_per_save=2500, policy_net_save_file=str(net_path), 
+    #               reward_save_file=str(rew_path), moving_reward_save_file=str(mov_path))
     #print("Time taken: " + str(time.time() - start_time))]
     #model.fit(np.array([[0, 1]]), np.array([[1, 1, 1]]), epochs=100, verbose=0)
+    load_path = os.path.join(cur_path, "net_saves\\_0.4")
+    trainer.load(str(load_path))
+    trainer.play(5, env)
 
 
     print("input state: " + str(state))

@@ -34,8 +34,8 @@ class MathLangEnv(Env):
 	# 1: - 2, cost: 1
 	# 2: + 3, cost: 1
 	def __init__(self) -> None:
-		self.game = WFCollapse1DBackContext([self.LEN], self.NUM_TILES, context_dims=[self.CONTEXT_LEN])
 		self.prompt = self._gen_prompt()
+		self.game = WFCollapse1DBackContext([self.LEN], self.NUM_TILES, context_dims=[self.CONTEXT_LEN])
 		# How much each tile costs to have in your output
 		self._costs = [0, 1, 1]
 

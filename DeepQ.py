@@ -71,8 +71,61 @@ class DeepQ:
 		self._target_net.set_weights(self._policy_net.get_weights())
 		return self._target_net
 
-	def test(self, state, target):
-		self._policy_net.fit(state, target)
+	def load(self, filename):
+		self._policy_net = tf.keras.models.load_model(filename)
+
+	def play(self, n_epi: int, env: EnvDeepQAdapter):
+		total_steps = 0
+		# init a list to store training rewards per episode
+		rewards_per_episode = []
+
+		# for every episode
+		for i in range(n_epi):
+			# init the start state of the env
+			state = env.reset()
+			reward = 0
+			running = True
+
+			# init a var to keep track of steps this episode
+			steps = 0
+
+			# init a list to store training rewards per timestep
+			rewards_per_step = []
+
+			# for each time step
+			while (running and steps < self._steps_per_episode):
+				action_weights = []
+
+				# this is calced every step cuz we need em for back prop. explanation near 'next_output' variable
+				# weights determined by the network. Make state into tensor and pass into network
+				net_input = np.array([env.process_state(state)])
+				# batch size by input shape
+				net_output = self._policy_net(net_input).numpy()
+				# with batch size 1 just get the first output
+				net_output = net_output[0]
+				action_weights = net_output
+				# make the chosen action an action object
+				action = env.make_action(state, action_weights)
+
+				# execute action in environment (env.step(action)). Store state, reward, running tuple
+				n_state, reward, running = env.step(action)
+
+				# store reward in per step reward list
+				rewards_per_step.append(reward)
+
+				# Progress state
+				state = n_state
+
+				# update the number of steps taken so far
+				steps += 1
+				total_steps += 1
+			# sum per step reward list and put it in per episode reward list
+			last_reward = sum(rewards_per_step)
+			rewards_per_episode.append(last_reward)
+
+			#------------------------Print progress---------------------------
+			print(str(i) + ": Reward: " + str(last_reward))
+		print("Average reward: " + str(sum(rewards_per_episode)/len(rewards_per_episode)))
 
 	# Train the network
 	def train(self, n_epi: int, env: EnvDeepQAdapter, steps_per_save=500, policy_net_save_file="", reward_save_file="", moving_reward_save_file=""):
