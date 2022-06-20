@@ -1,14 +1,18 @@
 import os
 import time
 import copy
-from typing import final
+import random
 import numpy as np
 import tensorflow as tf
 from DeepQ import DeepQ
 from MathLangEnv import MathLangDeepQEnvAdapter
 
-
 if __name__ == '__main__':
+    # for reproducible results
+    random.seed(123)
+    np.random.seed(123)
+    tf.random.set_seed(123)
+
     env = MathLangDeepQEnvAdapter()
     input_size = len(env.process_state(env.reset()))
     output_size = env.get_num_actions()
@@ -17,8 +21,11 @@ if __name__ == '__main__':
     model = tf.keras.models.Sequential([
         tf.keras.layers.InputLayer(input_shape=(input_size,)),
         tf.keras.layers.Dense(16, activation='relu'),
-        tf.keras.layers.Dense(output_size, activation='relu')
+        tf.keras.layers.Dense(output_size)
     ])
+    loss_fn = tf.keras.losses.MeanSquaredError()
+    opt = tf.keras.optimizers.Adam(learning_rate=0.01)
+    model.compile(optimizer=opt, loss=loss_fn)
     orig_weights = copy.deepcopy(model.get_weights())
 
     # Save files
@@ -27,25 +34,34 @@ if __name__ == '__main__':
     rew_path = os.path.join(cur_path, "reward.csv")
     mov_path = os.path.join(cur_path, "mov_rew.csv")
     net_path = os.path.join(cur_path, "net_saves\\")
-    # if you wanted to go in the parent dir, append to cur path a seperator and the 'parent_directory' symbol
-    path = os.path.normpath(cur_path + os.sep + os.pardir)
 
-    trainer = DeepQ(model, policy_clone_period=100, epsilon_decay=0.0007)
-    start_time = time.time()
-    trainer.train(5, env, steps_per_save=2500, policy_net_save_file=str(net_path), 
-                    reward_save_file=str(rew_path), moving_reward_save_file=str(mov_path))
-    print("Time taken: " + str(time.time() - start_time))
+    print("Before training: " + str(model(np.array([[0, 1]])).numpy()))
 
-    final_weights = model.get_weights()
+    # ep decay = 0.0007
+    trainer = DeepQ(model, learning_rate=0.05, policy_clone_period=100, epsilon_decay=10, batch_size=32)
+    #start_time = time.time()
+    trainer.train(100, env, steps_per_save=2500, policy_net_save_file=str(net_path), 
+                   reward_save_file=str(rew_path), moving_reward_save_file=str(mov_path))
+    #print("Time taken: " + str(time.time() - start_time))]
+    #model.fit(np.array([[0, 1]]), np.array([[1, 1, 1]]), epochs=100, verbose=0)
+    final_weights = copy.deepcopy(model.get_weights())
 
-    state = env.process_state(env.reset())
-    print("Orig: " + str(state))
-    state = np.array(state)
-    state = state.reshape(1, state.shape[0])
+    state = np.array([env.process_state(env.reset())])
 
-    if ((orig_weights == final_weights).all()): 
-        print("Hahaha")
-    print("Output: " + str(model(state).numpy()))
-    print("Model orig weights: " + str(orig_weights))
-    print("Final weights: " + str(final_weights))
+    print("input state: " + str(state))
+    print("after training: " + str(model(state).numpy()))
+    print("after training: " + str(model(np.array([[0.333333333, -0.3333333]])).numpy()))
+    print("after training: " + str(model(np.array([[0., -0.3333333]])).numpy()))
+
+
+    neq = False
+    for i in range(len(orig_weights)):
+        if not np.array_equal(orig_weights[i], final_weights[i]):
+            neq = True
+
+    if neq:
+        print("weights not equal bruh")
+    else:
+        print("Weights are good")
+
     print("Deep Q Main Program Finished Execution")

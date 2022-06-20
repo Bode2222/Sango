@@ -15,17 +15,18 @@ class DeepQ:
 	# replay mem size 10k
 	# lr = 0.001
 	# num_eps = 1k
-	def __init__(self, policy_net, steps_per_episode=-1, batch_size=256, replay_mem_size=10000, policy_clone_period=50, epsilon_decay=.0003):
+	def __init__(self, model, learning_rate=0.01, steps_per_episode=-1, batch_size=32, replay_mem_size=10000, policy_clone_period=50, epsilon_decay=.0003):
 		# Set up replay memory capacity
 		self._replay_mem = []
 		self._replay_mem_size = replay_mem_size
 
 		# set policy net with random weights
-		self._policy_net = policy_net
+		self._policy_net = model
+		self.model = model
 
 		# other net init stuff
 		loss_fn = tf.keras.losses.MeanSquaredError()
-		opt = tf.keras.optimizers.Adam(learning_rate=0.01)
+		opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 		self._policy_net.compile(optimizer=opt, loss=loss_fn)
 
 		# Clone policy net into target net
@@ -70,6 +71,8 @@ class DeepQ:
 		self._target_net.set_weights(self._policy_net.get_weights())
 		return self._target_net
 
+	def test(self, state, target):
+		self._policy_net.fit(state, target)
 
 	# Train the network
 	def train(self, n_epi: int, env: EnvDeepQAdapter, steps_per_save=500, policy_net_save_file="", reward_save_file="", moving_reward_save_file=""):
@@ -108,16 +111,13 @@ class DeepQ:
 				epsilon = np.random.uniform(0, 1)
 				action_weights = []
 
-				# this is determeined every step cuz we need em for back prop. explanation near 'next_output' variable
+				# this is calced every step cuz we need em for back prop. explanation near 'next_output' variable
 				# weights determined by the network. Make state into tensor and pass into network
-				net_input = np.array(env.process_state(state))
-				net_input = net_input.reshape(1, net_input.shape[0])
+				net_input = np.array([env.process_state(state)])
 				# batch size by input shape
 				net_output = self._policy_net(net_input).numpy()
 				# with batch size 1 just get the first output
 				net_output = net_output[0]
-				# add small num to everything cuz weights cant sum to 0
-				net_output = [x + 0.00000000000001 for x in net_output]
 
 				if epsilon < self._epsilon_thresh:
 					# action weights have even freqeuncy
@@ -164,7 +164,8 @@ class DeepQ:
 				target = self._policy_net(n_states).numpy()
 				target = np.amax(target, axis=1)
 				target = [[rewards[ii] + target[ii] if i == actions[ii].get_index() else a_ws[ii][i] for i in range(env.get_num_actions())] for ii in range(len(target))]
-				target = np.array(target)
+				#target = [[1. for i in range(env.get_num_actions())] for ii in range(len(target))]
+				target = np.array(target, dtype=float)
 
 				# Update policy net using gradient descent on loss
 				self._policy_net.fit(cur_states, target, verbose=0)
@@ -188,6 +189,8 @@ class DeepQ:
 			# sum per step reward list and put it in per episode reward list
 			last_reward = sum(rewards_per_step)
 			rewards_per_episode.append(last_reward)
+			
+			#------------------------Print progress---------------------------
 			print(str(total_steps) + ": epsilon: " + str(self._epsilon_thresh) + ", Reward: " + str(last_reward))
 
 			# append last episode reward to reward csv file
@@ -197,7 +200,7 @@ class DeepQ:
 		
 		# calc moving average
 		moving_ave = []
-		window_size = 200
+		window_size = 50
 		i = 0
 		
 		while i < len(rewards_per_episode) - window_size + 1:

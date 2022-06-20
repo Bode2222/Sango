@@ -66,7 +66,7 @@ class MathLangEnv(Env):
 		
 		similarity_score = self.compare(genned, self.prompt)
 		optimization_score = self.judge_efficiency(genned)
-		return similarity_score * (1 + optimization_score)
+		return (similarity_score-0.5) * (1 + optimization_score)
 
 	def get_num_actions(self):
 		return self.NUM_TILES
@@ -124,8 +124,19 @@ class MathLangDeepQEnvAdapter(MathLangEnv, EnvDeepQAdapter):
 			return -2
 			#return WFAction(state.get()[2], -2)
 
-		# choose a random tile
-		chosen_tile = random.choices(available_tile_ids, weights=available_weights)[0]
+		# choose a tile
+		chosen_tile = -1
+		num_equal = 0
+		max_weight = float('-inf')
+		for i in range(len(available_weights)):
+			if available_weights[i] > max_weight:
+				max_weight = available_weights[i]
+				chosen_tile = i
+			elif available_weights[i] == max_weight:
+				num_equal += 1
+
+		if num_equal == len(available_weights):
+			chosen_tile = random.choice(available_tile_ids)
 		return WFAction(state.get()[2], chosen_tile)
 
 	# Process a given state into a list of values
@@ -133,7 +144,7 @@ class MathLangDeepQEnvAdapter(MathLangEnv, EnvDeepQAdapter):
 		prompt, context, _ = state.get()
 		con_list = [cell.chosen_tile for cell in context]
 		out = prompt + con_list
-		out = [x/self.NUM_TILES for x in prompt]
+		out = [x/self.NUM_TILES for x in out]
 		return out
 
 if __name__ == '__main__':
