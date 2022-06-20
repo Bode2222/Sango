@@ -243,8 +243,9 @@ class DeepQ:
 			last_reward = sum(rewards_per_step)
 			rewards_per_episode.append(last_reward)
 			
-			#------------------------Print progress---------------------------
-			print(str(total_steps) + ": epsilon: " + str(self._epsilon_thresh) + ", Reward: " + str(last_reward))
+			#------------------------Print progress---------------------------#
+			# env.len is a mathlangenv thing thats convenient to have here. remove if it gives error
+			print(str(int(total_steps/env.LEN)) + ": epsilon: " + str(self._epsilon_thresh) + ", Reward: " + str(last_reward))
 
 			# append last episode reward to reward csv file
 			if reward_save_file != "":
