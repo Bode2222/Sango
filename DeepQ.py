@@ -1,6 +1,6 @@
 # Algorith inspired by DeepLizard Deep q series on youtube video 14 timestep 5:48
+import os
 import math
-import copy
 import random
 import numpy as np
 import tensorflow as tf
@@ -26,7 +26,7 @@ class DeepQ:
 
 		# other net init stuff
 		loss_fn = tf.keras.losses.MeanSquaredError()
-		opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+		opt = tf.keras.optimizers.SGD(learning_rate=learning_rate)
 		self._policy_net.compile(optimizer=opt, loss=loss_fn)
 
 		# Clone policy net into target net
@@ -64,7 +64,11 @@ class DeepQ:
 
 	# Save the policy network into file
 	def _save_policy_net(self, filename: str):
+		print("Saving: " + filename)
+		if not os.path.isdir(filename):
+			os.mkdir(filename)
 		self._policy_net.save(filename)
+
 
 	# copy policy network into target net
 	def _clone_policy(self):
@@ -221,7 +225,7 @@ class DeepQ:
 				target = np.array(target, dtype=float)
 
 				# Update policy net using gradient descent on loss
-				self._policy_net.fit(cur_states, target, verbose=0)
+				self._policy_net.fit(cur_states, target, verbose=0, epochs=2)
 
 				# after a number of timesteps, copy policy weights into target net once more
 				if total_steps % self._clone_period == 0:
@@ -268,7 +272,7 @@ class DeepQ:
 
 		# Save the network
 		if policy_net_save_file != "":
-			self._save_policy_net(policy_net_save_file + "_" + str(total_steps/steps_per_save))
+			self._save_policy_net(policy_net_save_file + "_" + str(int(total_steps/steps_per_save)))
 		return rewards_per_episode
 	
 
