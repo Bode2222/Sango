@@ -42,7 +42,7 @@ class DeepQ:
 		# init exploration threshold
 		self._epsilon_thresh = 0
 		self._ep_start = 1
-		self._ep_end = 0.01
+		self._ep_end = 0.001
 		self._ep_decay = epsilon_decay
 
 		# init the number of replay memories we will be learning in each step of the game
