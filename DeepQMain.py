@@ -13,8 +13,8 @@ if __name__ == '__main__':
     # this changes what prompt the mathlangenv gives
     random.seed(123)
     # these change the network weights
-    np.random.seed(1243)
-    tf.random.set_seed(12435)
+    np.random.seed(123)
+    tf.random.set_seed(123)
 
     env = MathLangDeepQEnvAdapter()
     input_size = len(env.process_state(env.reset()))
@@ -26,13 +26,15 @@ if __name__ == '__main__':
         tf.keras.layers.Dense(1280, activation='tanh'),
         tf.keras.layers.Dense(1280, activation='tanh'),
         tf.keras.layers.Dense(1280, activation='relu'),
+        tf.keras.layers.Dense(1280, activation='relu'),
+        tf.keras.layers.Dense(1280, activation='relu'),
+        tf.keras.layers.Dense(1280, activation='tanh'),
+        tf.keras.layers.Dense(1280, activation='relu'),
+        tf.keras.layers.Dense(1280, activation='tanh'),
+        tf.keras.layers.Dense(1280, activation='relu'),
+        tf.keras.layers.Dense(1280, activation='tanh'),
         tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='tanh'),
         tf.keras.layers.Dense(1024, activation='relu'),
         tf.keras.layers.Dense(1024, activation='relu'),
         tf.keras.layers.Dense(output_size)
@@ -50,16 +52,16 @@ if __name__ == '__main__':
 
     # ep decay = 0.00008, train for 15k
     # to get len 2 to work only need 2 layers ep decay .05
-    trainer = DeepQ(model, learning_rate=0.006, policy_clone_period=100, epsilon_decay=0.0005, replay_mem_size=15000, batch_size=128)
+    trainer = DeepQ(model, learning_rate=0.006, policy_clone_period=100, epsilon_decay=0.00005, replay_mem_size=15000, batch_size=128)
 
     if LOAD_MODEL:
         trainer.load(str(load_path))
     if TRAIN_MODEL:
         start_time = time.time()
-        trainer.train(10500, env, steps_per_save=2000, policy_net_save_file=str(net_path), 
+        trainer.train(20000, env, steps_per_save=2000, policy_net_save_file=str(net_path), 
                        reward_save_file=str(rew_path), moving_reward_save_file=str(mov_path))
         print("Time taken: " + str(int((time.time() - start_time)/60)) + " mins and " + str(int((time.time() - start_time) % 60)) + " seconds")
 
     # Play 16 games with model
-    trainer.play(16, env)
+    trainer.play(36, env)
     print("Deep Q Main Program Finished Execution")

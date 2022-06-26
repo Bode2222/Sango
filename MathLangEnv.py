@@ -19,9 +19,9 @@ class MathLangState(WFState):
 # given equation also represented as tiles. a list of tiles will be referred to as a program
 class MathLangEnv(Env):
 	# Max board len
-	LEN = 4
+	LEN = 5
 	# context length
-	CONTEXT_LEN = 4
+	CONTEXT_LEN = 5
 	# How many random samples to pick when comparing 2 programs
 	NUM_SAMPLES = 5
 	# What portion of the graph to sample (the combined math functions form a graph of input to output)
