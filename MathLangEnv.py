@@ -19,9 +19,9 @@ class MathLangState(WFState):
 # given equation also represented as tiles. a list of tiles will be referred to as a program
 class MathLangEnv(Env):
 	# Max board len
-	LEN = 3
+	LEN = 4
 	# context length
-	CONTEXT_LEN = 3
+	CONTEXT_LEN = 4
 	# How many random samples to pick when comparing 2 programs
 	NUM_SAMPLES = 5
 	# What portion of the graph to sample (the combined math functions form a graph of input to output)
@@ -144,7 +144,7 @@ class MathLangDeepQEnvAdapter(MathLangEnv, EnvDeepQAdapter):
 		prompt, context, _ = state.get()
 		con_list = [cell.chosen_tile for cell in context]
 		out = prompt + con_list
-		out = [x/self.NUM_TILES for x in out]
+		out = [round(x/self.NUM_TILES, 3) for x in out]
 		return out
 
 if __name__ == '__main__':

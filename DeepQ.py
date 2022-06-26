@@ -77,6 +77,7 @@ class DeepQ:
 
 	def load(self, filename):
 		self._policy_net = tf.keras.models.load_model(filename)
+		self._clone_policy()
 
 	def play(self, n_epi: int, env: EnvDeepQAdapter):
 		total_steps = 0
@@ -88,6 +89,7 @@ class DeepQ:
 			# init the start state of the env
 			state = env.reset()
 			reward = 0
+			n_state = state
 			running = True
 
 			# init a var to keep track of steps this episode
@@ -113,6 +115,11 @@ class DeepQ:
 
 				# execute action in environment (env.step(action)). Store state, reward, running tuple
 				n_state, reward, running = env.step(action)
+				
+				if not running:
+					s = env.process_state(state)
+					s[-1] = round(action.get_index()/env.get_num_actions(), 3)
+					print(str(i) + ": State: " + str(s))
 
 				# store reward in per step reward list
 				rewards_per_step.append(reward)
@@ -172,7 +179,7 @@ class DeepQ:
 				# weights determined by the network. Make state into tensor and pass into network
 				net_input = np.array([env.process_state(state)])
 				# batch size by input shape
-				net_output = self._policy_net(net_input).numpy()
+				net_output = self._policy_net(tf.convert_to_tensor(net_input)).numpy()
 				# with batch size 1 just get the first output
 				net_output = net_output[0]
 
@@ -218,7 +225,7 @@ class DeepQ:
 				# at this point with the true target val (reward + max(target_net(next state))). However! if this is not that action
 				# replace this target val with the output of the network so the loss for that node will be 0. All this cuz keras 
 				# refuses to employ a backprop function smh
-				target = self._policy_net(n_states).numpy()
+				target = self._target_net(tf.convert_to_tensor(n_states)).numpy()
 				target = np.amax(target, axis=1)
 				target = [[rewards[ii] + target[ii] if i == actions[ii].get_index() else a_ws[ii][i] for i in range(env.get_num_actions())] for ii in range(len(target))]
 				#target = [[1. for i in range(env.get_num_actions())] for ii in range(len(target))]
@@ -248,13 +255,14 @@ class DeepQ:
 			rewards_per_episode.append(last_reward)
 			
 			#------------------------Print progress---------------------------#
-			# env.len is a mathlangenv thing thats convenient to have here. remove if it gives error
-			print(str(int(total_steps/env.LEN)) + ": epsilon: " + str(self._epsilon_thresh) + ", Reward: " + str(last_reward))
+			if i % 10:
+				# env.len is a mathlangenv thing thats convenient to have here. remove if it gives error
+				print(str(i) + ": epsilon: " + str(round(self._epsilon_thresh, 3)) + ", Reward: " + str(round(last_reward, 2)))
 
 			# append last episode reward to reward csv file
 			if reward_save_file != "":
 				reward_file = open(reward_save_file, 'a')
-				reward_file.write(", " + str(last_reward))
+				reward_file.write(str(last_reward)+ "\n")
 		
 		# calc moving average
 		moving_ave = []
@@ -267,7 +275,7 @@ class DeepQ:
 			# append last episode reward to reward csv file
 			if moving_reward_save_file != "":
 				reward_file = open(moving_reward_save_file, 'a')
-				reward_file.write(", " + str(window_average))
+				reward_file.write(str(i) + ", " + str(window_average) + "\n")
 			i += 1
 
 		# Save the network
